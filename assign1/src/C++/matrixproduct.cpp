@@ -239,7 +239,7 @@ int main(int argc, char *argv[])
     if (ret != PAPI_OK)
         cout << "ERROR: PAPI_L2_DCM" << endl;
 
-    /ret = PAPI_add_event(EventSet, PAPI_L2_DCH);
+    ret = PAPI_add_event(EventSet, PAPI_L2_DCH);
      if (ret != PAPI_OK)
          cout << "ERROR: PAPI_L2_DCH" << endl;
   
