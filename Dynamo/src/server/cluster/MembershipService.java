@@ -13,7 +13,7 @@ public class MembershipService implements ClusterMembership {
     @Override
     public void join() {
         // TODO Join protocol
-        nodes.add(new Node());
+        nodes.add(new Node("temp"));
     }
 
     @Override

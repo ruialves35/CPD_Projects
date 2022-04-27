@@ -1,5 +1,8 @@
 package server;
 
+import server.cluster.Node;
+import server.storage.StorageService;
+
 public class Store {
     public static void main(String[] args) {
         if (args.length != 4) {
@@ -12,5 +15,7 @@ public class Store {
         final String multicastIPPort = args[1];
         final String nodeId = args[2];
         final String storePort = args[3];
+
+        final StorageService storageService = new StorageService(new Node(nodeId));
     }
 }
