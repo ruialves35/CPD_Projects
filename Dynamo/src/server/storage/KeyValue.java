@@ -1,4 +1,4 @@
-package server;
+package server.storage;
 
 public interface KeyValue {
     void put(String key, byte[] value);
