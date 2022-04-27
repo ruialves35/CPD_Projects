@@ -1,5 +1,13 @@
 package server.cluster;
 
 public class Node {
-    // TODO Node class
+    private final String id;
+
+    public Node(final String id) {
+        this.id = id;
+    }
+
+    public String getId() {
+        return id;
+    }
 }
