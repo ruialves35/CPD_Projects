@@ -1,19 +1,25 @@
 package server.cluster;
 
+import server.storage.StorageService;
+
 import java.util.ArrayList;
 import java.util.List;
 
 public class MembershipService implements ClusterMembership {
-    private List<Node> nodes;
+    private final List<Node> nodes;
+    private final StorageService storageService;
 
-    public MembershipService() {
+    public MembershipService(final StorageService storageService) {
         nodes = new ArrayList<>();
+        this.storageService = storageService;
     }
 
     @Override
     public void join() {
         // TODO Join protocol
-        nodes.add(new Node("temp"));
+        Node newNode = new Node("temp");
+        nodes.add(newNode);
+        storageService.addNode(newNode);
     }
 
     @Override
