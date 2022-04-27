@@ -4,9 +4,9 @@ import java.io.DataInputStream;
 import java.io.IOException;
 import java.net.*;
 
-public class Server {
+public class ExampleServer {
     public static void main(String[] args) {
-        Server.udpTest();
+        ExampleServer.udpTest();
     }
 
     private static void tcpTest() {

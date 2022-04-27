@@ -7,9 +7,9 @@ import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.Socket;
 
-public class Client {
+public class ExampleClient {
     public static void main(String[] args) {
-        Client.udpTest();
+        ExampleClient.udpTest();
     }
 
     private static void tcpTest() {
