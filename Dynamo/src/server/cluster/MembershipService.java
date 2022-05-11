@@ -1,30 +1,31 @@
 package server.cluster;
 
-import server.storage.StorageService;
-
-import java.util.ArrayList;
-import java.util.List;
+import server.Utils;
+import java.util.SortedMap;
+import java.util.TreeMap;
 
 public class MembershipService implements ClusterMembership {
-    private final List<Node> nodes;
-    private final StorageService storageService;
+    private final SortedMap<String, Node> nodeMap;
 
-    public MembershipService(final StorageService storageService) {
-        nodes = new ArrayList<>();
-        this.storageService = storageService;
+    public MembershipService() {
+        nodeMap = new TreeMap<>();
     }
 
     @Override
     public void join() {
         // TODO Join protocol
         Node newNode = new Node("temp");
-        nodes.add(newNode);
-        storageService.addNode(newNode);
+        String key = Utils.generateKey("temp");
+        nodeMap.put(key, newNode);
     }
 
     @Override
     public void leave() {
         // TODO Leave protocol
-        if (nodes.size() > 0) nodes.remove(0);
+        if (nodeMap.size() > 0) nodeMap.remove(Utils.generateKey("temp"));
+    }
+
+    public SortedMap<String, Node> getNodeMap() {
+        return nodeMap;
     }
 }

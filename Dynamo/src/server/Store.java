@@ -1,7 +1,8 @@
 package server;
 
-import server.cluster.Node;
+import server.cluster.MembershipService;
 import server.storage.StorageService;
+import server.storage.TransferService;
 
 public class Store {
     public static void main(String[] args) {
@@ -16,6 +17,8 @@ public class Store {
         final String nodeId = args[2];
         final String storePort = args[3];
 
-        final StorageService storageService = new StorageService(new Node(nodeId));
+        final MembershipService membershipService = new MembershipService();
+        final StorageService storageService = new StorageService(membershipService.getNodeMap());
+        final TransferService transferService = new TransferService(membershipService.getNodeMap());
     }
 }
