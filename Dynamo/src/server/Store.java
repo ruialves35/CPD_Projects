@@ -13,12 +13,17 @@ public class Store {
         }
 
         final String multicastIPAddr = args[0];
-        final String multicastIPPort = args[1];
+        final int multicastIPPort = Integer.parseInt(args[1]);
         final String nodeId = args[2];
-        final String storePort = args[3];
+        final int storePort = Integer.parseInt(args[3]);
 
-        final MembershipService membershipService = new MembershipService();
+        final MembershipService membershipService = new MembershipService(multicastIPAddr, multicastIPPort, nodeId);
         final StorageService storageService = new StorageService(membershipService.getNodeMap());
         final TransferService transferService = new TransferService(membershipService.getNodeMap());
     }
 }
+
+/*
+* This is where a Service node is invoked. This class will act as a node in the server. Next steps is to find how multicast works
+* and try to send a message to other service nodes?
+* */
