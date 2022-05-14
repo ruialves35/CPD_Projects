@@ -1,6 +1,6 @@
 package server.cluster;
 
 public interface ClusterMembership {
-    void join();
+    boolean join();
     void leave();
 }

@@ -6,9 +6,9 @@ import server.storage.TransferService;
 
 public class Store {
     public static void main(String[] args) {
-        if (args.length != 4) {
+        if (args.length < 4 || args.length > 5) {
             System.out.println("Wrong number of arguments. Please invoke the program as:");
-            System.out.println("java Store <IP_mcast_addr> <IP_mcast_port> <node_id> <Store_port>");
+            System.out.println("java Store <IP_mcast_addr> <IP_mcast_port> <node_id> <Store_port> [isRootNode]");
             System.exit(1);
         }
 
@@ -17,7 +17,13 @@ public class Store {
         final String nodeId = args[2];
         final int storePort = Integer.parseInt(args[3]);
 
-        final MembershipService membershipService = new MembershipService(multicastIPAddr, multicastIPPort, nodeId);
+        boolean isRootNode = false;
+        if (args.length == 5) {
+            isRootNode = Boolean.parseBoolean(args[4]);
+        }
+
+
+        final MembershipService membershipService = new MembershipService(multicastIPAddr, multicastIPPort, nodeId, isRootNode);
         final StorageService storageService = new StorageService(membershipService.getNodeMap());
         final TransferService transferService = new TransferService(membershipService.getNodeMap());
     }
