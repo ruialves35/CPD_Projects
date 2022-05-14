@@ -13,6 +13,7 @@ public class MembershipService implements ClusterMembership {
     private final int multicastIPPort;
     private final String nodeId;
     private final boolean isRootNode;
+    private int membershipCounter;  // NEEDS TO BE STORED IN NON-VOLATILE MEMORY
     private static final int maxRetransmissions = 3;
 
     public MembershipService(String multicastIPAddr, int multicastIPPort, String nodeId, boolean isRootNode) {
@@ -62,7 +63,6 @@ public class MembershipService implements ClusterMembership {
     }
 
     private void listen() {
-        // TODO: TRY TO RUN 2 STORES (1 AS ROOT) AND SEE IF IT RECEIVES THE MESSAGE
         try {
             MulticastSocket socket = new MulticastSocket(this.multicastIPPort);
             InetAddress group = InetAddress.getByName("230.0.0.0");
@@ -76,7 +76,7 @@ public class MembershipService implements ClusterMembership {
 
                 String received = new String(
                         packet.getData(), 0, packet.getLength());
-                System.out.println("Received packet:" + received);
+                System.out.println("Received packet: " + received);
                 if ("end".equals(received)) break;
             }
 
@@ -87,3 +87,10 @@ public class MembershipService implements ClusterMembership {
         }
     }
 }
+
+/**
+ * Use the membership Log to recognize how many nodes are in the system currently. This way, if there are less than 3, we can join with less than
+ * 3 joins. For the first node however, maybe we should initialize it through the optional argument.
+ *
+ * We need to establish the header
+ */
