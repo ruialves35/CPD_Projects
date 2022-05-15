@@ -1,14 +1,11 @@
 package server;
 
 import server.cluster.MembershipService;
-import server.network.Message;
-import server.network.Sender;
 import server.network.TCPListener;
 import server.network.UDPListener;
 import server.storage.StorageService;
 import server.storage.TransferService;
 
-import java.net.InetAddress;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -31,7 +28,7 @@ public class Store {
         }
 
         final MembershipService membershipService = new MembershipService(multicastIPAddr, multicastIPPort, nodeId, isRootNode);
-        final StorageService storageService = new StorageService(membershipService.getNodeMap());
+        final StorageService storageService = new StorageService(membershipService.getNodeMap(), nodeId);
         final TransferService transferService = new TransferService(membershipService.getNodeMap());
         final ExecutorService executorService = Executors.newCachedThreadPool();
 
@@ -39,7 +36,6 @@ public class Store {
 
         if (membershipService.join()) {
             executorService.submit(new UDPListener(storageService, membershipService, transferService, executorService));
-
         }
     }
 }

@@ -5,11 +5,10 @@ import server.Utils;
 import server.network.Sender;
 
 import java.nio.charset.StandardCharsets;
-import java.util.SortedMap;
 import java.util.TreeMap;
 
 public class MembershipService implements ClusterMembership {
-    private final SortedMap<String, Node> nodeMap;
+    private final TreeMap<String, Node> nodeMap;
     private final String multicastIpAddr;
     private final int multicastIPPort;
     private final String nodeId;
@@ -45,7 +44,7 @@ public class MembershipService implements ClusterMembership {
         if (nodeMap.size() > 0) nodeMap.remove(Utils.generateKey("temp"));
     }
 
-    public SortedMap<String, Node> getNodeMap() {
+    public TreeMap<String, Node> getNodeMap() {
         return nodeMap;
     }
 
