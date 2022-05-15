@@ -2,6 +2,7 @@ package server.storage;
 
 import server.cluster.Node;
 
+import java.util.Map;
 import java.util.TreeMap;
 
 public class StorageService implements KeyValue {
@@ -47,7 +48,16 @@ public class StorageService implements KeyValue {
         // TODO Delete operation
     }
 
+    /**
+     * This method ensures the binary search's O(log N) time complexity by using the
+     * TreeMap.ceilingKey() method, which takes advantage of a Red-Black BST.
+     */
     private Node getResponsibleNode(String key) {
-        return null;
+        Map.Entry<String, Node> nodeEntry = nodeMap.ceilingEntry(key);
+
+        // No node with greater key -> Go to the start of the circle (first node)
+        if (nodeEntry == null) nodeEntry = nodeMap.firstEntry();
+
+        return nodeEntry.getValue();
     }
 }
