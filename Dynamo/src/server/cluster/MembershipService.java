@@ -52,7 +52,7 @@ public class MembershipService implements ClusterMembership {
     private void multicastJoin() {
         try {
             DatagramSocket socket = new DatagramSocket();
-            InetAddress group = InetAddress.getByName("230.0.0.0");
+            InetAddress group = InetAddress.getByName(this.multicastIpAddr);
 
             String message = "ola udp";
             DatagramPacket packet = new DatagramPacket(message.getBytes(), message.getBytes().length, group, this.multicastIPPort);
@@ -65,8 +65,10 @@ public class MembershipService implements ClusterMembership {
     private void listen() {
         try {
             MulticastSocket socket = new MulticastSocket(this.multicastIPPort);
-            InetAddress group = InetAddress.getByName("230.0.0.0");
-            socket.joinGroup(group);
+            InetSocketAddress group = new InetSocketAddress(this.multicastIpAddr, this.multicastIPPort);
+            // TODO: SHOULD WE USE THE 1ST INTERFACE? NOT SURE IF THERE IS ANOTHER WAY
+            NetworkInterface netInf = NetworkInterface.getByIndex(0);
+            socket.joinGroup(group, netInf);
 
             System.out.println("Listening for memberships...");
             while (true) {
@@ -80,7 +82,7 @@ public class MembershipService implements ClusterMembership {
                 if ("end".equals(received)) break;
             }
 
-            socket.leaveGroup(group);
+            socket.leaveGroup(group, netInf);
             socket.close();
         } catch (IOException e) {
             e.printStackTrace();
