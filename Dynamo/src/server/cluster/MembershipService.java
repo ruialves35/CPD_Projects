@@ -1,5 +1,6 @@
 package server.cluster;
 
+import server.Message;
 import server.Utils;
 
 import java.io.IOException;
@@ -50,16 +51,8 @@ public class MembershipService implements ClusterMembership {
     }
 
     private void multicastJoin() {
-        try {
-            DatagramSocket socket = new DatagramSocket();
-            InetAddress group = InetAddress.getByName(this.multicastIpAddr);
-
-            String message = "ola udp";
-            DatagramPacket packet = new DatagramPacket(message.getBytes(), message.getBytes().length, group, this.multicastIPPort);
-            socket.send(packet);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+        Message msg = new Message(this.multicastIpAddr, this.multicastIPPort);
+        msg.sendMulticast("request", "get", "ola multicast");
     }
 
     private void listen() {
@@ -73,13 +66,16 @@ public class MembershipService implements ClusterMembership {
 
             System.out.println("Listening for memberships...");
             while (true) {
-                String message = "ola udp";
-                DatagramPacket packet = new DatagramPacket(message.getBytes(), message.getBytes().length);
+                byte[] msg = new byte[Message.MAX_MSG_SIZE];
+                DatagramPacket packet = new DatagramPacket(msg, msg.length);
+
                 socket.receive(packet);
 
+                //System.out.println("Got Packet from :" + packet.getAddress());
                 String received = new String(
                         packet.getData(), 0, packet.getLength());
-                System.out.println("Received packet: " + received);
+                System.out.println("Received packet: \n" + received);
+                System.out.println("-----------------");
                 if ("end".equals(received)) break;
             }
 

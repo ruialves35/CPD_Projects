@@ -1,8 +1,12 @@
 package server;
 
 import server.cluster.MembershipService;
+import server.network.TCPListener;
 import server.storage.StorageService;
 import server.storage.TransferService;
+
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class Store {
     public static void main(String[] args) {
@@ -26,6 +30,9 @@ public class Store {
         final MembershipService membershipService = new MembershipService(multicastIPAddr, multicastIPPort, nodeId, isRootNode);
         final StorageService storageService = new StorageService(membershipService.getNodeMap());
         final TransferService transferService = new TransferService(membershipService.getNodeMap());
+        final ExecutorService executorService = Executors.newCachedThreadPool();
+
+        executorService.submit(new TCPListener(storageService, membershipService, transferService, executorService, storePort));
     }
 }
 
