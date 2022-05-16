@@ -66,6 +66,7 @@ public class MembershipService implements ClusterMembership {
         try {
             MulticastSocket socket = new MulticastSocket(this.multicastIPPort);
             InetSocketAddress group = new InetSocketAddress(this.multicastIpAddr, this.multicastIPPort);
+
             // TODO: SHOULD WE USE THE 1ST INTERFACE? NOT SURE IF THERE IS ANOTHER WAY
             NetworkInterface netInf = NetworkInterface.getByIndex(0);
             socket.joinGroup(group, netInf);
