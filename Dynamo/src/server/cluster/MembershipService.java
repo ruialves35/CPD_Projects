@@ -3,9 +3,12 @@ package server.cluster;
 import common.Message;
 import common.Sender;
 import common.Utils;
-
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.io.File;
+import java.io.IOException;
+import java.io.PrintWriter;
+import java.util.SortedMap;
 import java.util.TreeMap;
 
 public class MembershipService implements ClusterMembership {
@@ -23,6 +26,7 @@ public class MembershipService implements ClusterMembership {
         this.multicastIPPort = multicastIPPort;
         this.nodeId = nodeId;
         this.isRootNode = isRootNode;
+        this.createMembershipLog();
     }
 
     @Override
@@ -66,6 +70,19 @@ public class MembershipService implements ClusterMembership {
 
     public String getMulticastIpAddr() {
         return multicastIpAddr;
+    }
+
+    public void createMembershipLog() {
+        File memberLog = new File("src/server/assets/membershipLog");
+        try {
+            if(!memberLog.createNewFile()) {
+                PrintWriter writer = new PrintWriter(memberLog);
+                writer.print("");
+                writer.close();
+            }
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 }
 
