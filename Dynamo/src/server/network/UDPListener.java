@@ -42,9 +42,8 @@ public class UDPListener implements Runnable {
                 //System.out.println("Got Packet from :" + packet.getAddress());
                 String received = new String(
                         packet.getData(), 0, packet.getLength());
-                System.out.println("Received packet: \n" + received);
-                System.out.println("-----------------");
-                if ("end".equals(received)) break;
+                if (!this.processEvent(received))
+                    break;
             }
 
             socket.leaveGroup(group, netInf);
@@ -54,7 +53,11 @@ public class UDPListener implements Runnable {
         }
     }
 
-    private void processEvent(String message) {
+    private boolean processEvent(String message) {
         // TODO Parse message and generate event
+        System.out.println("Received packet: \n" + message);
+        System.out.println("-----------------");
+
+        return "end".equals(message);
     }
 }
