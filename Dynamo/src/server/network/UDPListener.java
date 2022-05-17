@@ -5,12 +5,18 @@ import server.cluster.MembershipService;
 import server.storage.StorageService;
 import server.storage.TransferService;
 
+import java.io.BufferedReader;
 import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.InetSocketAddress;
 import java.net.MulticastSocket;
 import java.net.NetworkInterface;
+import java.io.StringReader;
+import java.net.*;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.ExecutorService;
+import java.util.stream.Stream;
 
 public class UDPListener implements Runnable {
     private final StorageService storageService;
@@ -41,10 +47,9 @@ public class UDPListener implements Runnable {
                 DatagramPacket packet = new DatagramPacket(msg, msg.length);
 
                 socket.receive(packet);
-                Message message = new Message(packet.getData());
 
-                this.processEvent(message);
-                if (message.getAction().equals("leave")) break;
+                if (!this.processEvent(packet))
+                    break;
             }
 
             socket.leaveGroup(group, netInf);
@@ -55,7 +60,17 @@ public class UDPListener implements Runnable {
         }
     }
 
-    private void processEvent(Message message) {
+    private boolean processEvent(DatagramPacket packet) {
+        //System.out.println("Got Packet from :" + packet.getAddress());
+        Message message = new Message(packet.getData());
 
+        // TODO Parse message and generate event
+        System.out.println("Received packet: \n" + packet.getData());
+        System.out.println("-----------------");
+
+        String membershipCounter = new String(message.getBody());
+        System.out.println("GOT body:" + membershipCounter);
+
+        return "end".equals(message);
     }
 }
