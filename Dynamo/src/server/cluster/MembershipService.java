@@ -23,13 +23,12 @@ public class MembershipService implements ClusterMembership {
         this.multicastIPPort = multicastIPPort;
         this.nodeId = nodeId;
         this.isRootNode = isRootNode;
-
-        if (isRootNode) this.listen();
-        else this.join();
     }
 
     @Override
     public boolean join() {
+        if (this.isRootNode) return true;
+
         // TODO Join protocol
         this.multicastJoin();
 
@@ -55,35 +54,12 @@ public class MembershipService implements ClusterMembership {
         msg.sendMulticast("request", "get", "ola multicast");
     }
 
-    private void listen() {
-        try {
-            MulticastSocket socket = new MulticastSocket(this.multicastIPPort);
-            InetSocketAddress group = new InetSocketAddress(this.multicastIpAddr, this.multicastIPPort);
+    public int getMulticastIPPort() {
+        return multicastIPPort;
+    }
 
-            // TODO: SHOULD WE USE THE 1ST INTERFACE? NOT SURE IF THERE IS ANOTHER WAY
-            NetworkInterface netInf = NetworkInterface.getByIndex(0);
-            socket.joinGroup(group, netInf);
-
-            System.out.println("Listening for memberships...");
-            while (true) {
-                byte[] msg = new byte[Message.MAX_MSG_SIZE];
-                DatagramPacket packet = new DatagramPacket(msg, msg.length);
-
-                socket.receive(packet);
-
-                //System.out.println("Got Packet from :" + packet.getAddress());
-                String received = new String(
-                        packet.getData(), 0, packet.getLength());
-                System.out.println("Received packet: \n" + received);
-                System.out.println("-----------------");
-                if ("end".equals(received)) break;
-            }
-
-            socket.leaveGroup(group, netInf);
-            socket.close();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+    public String getMulticastIpAddr() {
+        return multicastIpAddr;
     }
 }
 

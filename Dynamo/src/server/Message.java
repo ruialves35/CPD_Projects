@@ -29,7 +29,7 @@ public class Message {
         // empty line
         sb.append("\r\n");
 
-        sb.append(body).append("\r\n");
+        sb.append(body);
 
         return sb.toString();
     }

@@ -2,6 +2,7 @@ package server;
 
 import server.cluster.MembershipService;
 import server.network.TCPListener;
+import server.network.UDPListener;
 import server.storage.StorageService;
 import server.storage.TransferService;
 
@@ -33,6 +34,10 @@ public class Store {
         final ExecutorService executorService = Executors.newCachedThreadPool();
 
         executorService.submit(new TCPListener(storageService, membershipService, transferService, executorService, storePort));
+
+        if (membershipService.join()) {
+            executorService.submit(new UDPListener  (storageService, membershipService, transferService, executorService));
+        }
     }
 }
 

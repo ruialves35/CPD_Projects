@@ -14,38 +14,37 @@ public class UDPListener implements Runnable {
     private final MembershipService membershipService;
     private final TransferService transferService;
     private final ExecutorService executorService;
-    private final int multicastIPPort;
-    private final String multicastIpAddr;
 
     public UDPListener(StorageService storageService, MembershipService membershipService, TransferService transferService,
-                       ExecutorService executorService, String multicastIpAddr, int multicastIPPort) {
+                       ExecutorService executorService) {
         this.storageService = storageService;
         this.membershipService = membershipService;
         this.transferService = transferService;
         this.executorService = executorService;
-        this.multicastIPPort = multicastIPPort;
-        this.multicastIpAddr = multicastIpAddr;
     }
 
     public void run() {
         try {
-            MulticastSocket socket = new MulticastSocket(this.multicastIPPort);
-            InetSocketAddress group = new InetSocketAddress(this.multicastIpAddr, this.multicastIPPort);
+            MulticastSocket socket = new MulticastSocket(this.membershipService.getMulticastIPPort());
+            InetSocketAddress group = new InetSocketAddress(this.membershipService.getMulticastIpAddr(), this.membershipService.getMulticastIPPort());
 
             // TODO: SHOULD WE USE THE 1ST INTERFACE? NOT SURE IF THERE IS ANOTHER WAY
             NetworkInterface netInf = NetworkInterface.getByIndex(0);
             socket.joinGroup(group, netInf);
 
-            System.out.println("Listening for UDP Messages...");
+            System.out.println("Listening for memberships...");
             while (true) {
                 byte[] msg = new byte[Message.MAX_MSG_SIZE];
                 DatagramPacket packet = new DatagramPacket(msg, msg.length);
 
                 socket.receive(packet);
 
+                //System.out.println("Got Packet from :" + packet.getAddress());
                 String received = new String(
                         packet.getData(), 0, packet.getLength());
-                if ("leave".equals(received)) break;
+                System.out.println("Received packet: \n" + received);
+                System.out.println("-----------------");
+                if ("end".equals(received)) break;
             }
 
             socket.leaveGroup(group, netInf);
