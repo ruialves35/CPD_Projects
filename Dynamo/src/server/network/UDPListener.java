@@ -13,6 +13,7 @@ import java.net.MulticastSocket;
 import java.net.NetworkInterface;
 import java.io.StringReader;
 import java.net.*;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
@@ -68,7 +69,8 @@ public class UDPListener implements Runnable {
         System.out.println("Received packet: \n" + packet.getData());
         System.out.println("-----------------");
 
-        String membershipCounter = new String(message.getBody());
+        ByteBuffer bb = ByteBuffer.wrap(message.getBody());
+        int membershipCounter = bb.getInt();
         System.out.println("GOT body:" + membershipCounter);
 
         return "end".equals(message);
