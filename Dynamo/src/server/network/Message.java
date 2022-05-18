@@ -43,6 +43,10 @@ public class Message {
     /**
      * Builds a Message according to our Message Structure
      * where the first line is the header, in the format
+     * Type
+     * Action
+     * (empty line)
+     * Body
      * @return Byte array with the message
      */
     public byte[] toBytes() {

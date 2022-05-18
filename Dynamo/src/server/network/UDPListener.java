@@ -26,10 +26,10 @@ public class UDPListener implements Runnable {
         try {
             MulticastSocket socket = new MulticastSocket(this.membershipService.getMulticastIPPort());
             InetSocketAddress group = new InetSocketAddress(this.membershipService.getMulticastIpAddr(), this.membershipService.getMulticastIPPort());
-
             NetworkInterface netInf = NetworkInterface.getByIndex(0);
             socket.joinGroup(group, netInf);
 
+            System.out.println("Listening UDP messages\n");
             while (true) {
                 byte[] msg = new byte[Message.MAX_MSG_SIZE];
                 DatagramPacket packet = new DatagramPacket(msg, msg.length);
