@@ -2,12 +2,12 @@ package server.storage;
 
 import server.cluster.Node;
 
-import java.util.SortedMap;
+import java.util.TreeMap;
 
 public class TransferService {
-    private final SortedMap<String, Node> nodeMap;
+    private final TreeMap<String, Node> nodeMap;
 
-    public TransferService(SortedMap<String, Node> nodeMap) {
+    public TransferService(TreeMap<String, Node> nodeMap) {
         this.nodeMap = nodeMap;
     }
 

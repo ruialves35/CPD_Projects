@@ -1,9 +1,9 @@
 package server;
 
+import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.util.Arrays;
 
 public class Utils {
     public static String generateKey(final String hashable) {
@@ -13,7 +13,8 @@ public class Utils {
     public static String generateKey(final byte[] hashable) {
         try {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            return Arrays.toString(digest.digest(hashable));
+            byte[] hashBytes = digest.digest(hashable);
+            return String.format("%x", new BigInteger(1, hashBytes));
         } catch (NoSuchAlgorithmException e) {
             System.out.println("Invalid MessageDigest algorithm");
             System.exit(1);
