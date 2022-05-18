@@ -27,22 +27,18 @@ public class UDPListener implements Runnable {
             MulticastSocket socket = new MulticastSocket(this.membershipService.getMulticastIPPort());
             InetSocketAddress group = new InetSocketAddress(this.membershipService.getMulticastIpAddr(), this.membershipService.getMulticastIPPort());
 
-            // TODO: SHOULD WE USE THE 1ST INTERFACE? NOT SURE IF THERE IS ANOTHER WAY
             NetworkInterface netInf = NetworkInterface.getByIndex(0);
             socket.joinGroup(group, netInf);
 
-            System.out.println("Listening for memberships...");
             while (true) {
                 byte[] msg = new byte[Message.MAX_MSG_SIZE];
                 DatagramPacket packet = new DatagramPacket(msg, msg.length);
 
                 socket.receive(packet);
+                Message message = new Message(packet.getData());
 
-                //System.out.println("Got Packet from :" + packet.getAddress());
-                String received = new String(
-                        packet.getData(), 0, packet.getLength());
-                if (!this.processEvent(received))
-                    break;
+                this.processEvent(message);
+                if (message.getAction().equals("leave")) break;
             }
 
             socket.leaveGroup(group, netInf);
@@ -52,11 +48,7 @@ public class UDPListener implements Runnable {
         }
     }
 
-    private boolean processEvent(String message) {
-        // TODO Parse message and generate event
-        System.out.println("Received packet: \n" + message);
-        System.out.println("-----------------");
+    private void processEvent(Message message) {
 
-        return "end".equals(message);
     }
 }

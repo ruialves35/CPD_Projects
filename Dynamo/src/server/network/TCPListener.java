@@ -34,10 +34,9 @@ public class TCPListener implements Runnable {
                 Socket socket = serverSocket.accept();
                 DataInputStream stream = new DataInputStream(socket.getInputStream());
 
-                String message = stream.readUTF();
+                Message message = new Message(stream.readAllBytes());
                 processEvent(message);
-                System.out.println(message);
-                if (message.equals("leave")) break;
+                if (message.getAction().equals("leave")) break;
             }
             serverSocket.close();
             }
@@ -46,7 +45,7 @@ public class TCPListener implements Runnable {
         }
     }
 
-    private void processEvent(String message) {
+    private void processEvent(Message message) {
         // TODO Parse message and generate event
     }
 }
