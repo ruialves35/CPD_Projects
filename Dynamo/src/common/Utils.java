@@ -21,4 +21,8 @@ public class Utils {
         }
         return null;
     }
+
+    public static String generateFolderPath(String nodeId) {
+        return "src/database/" + Utils.generateKey(nodeId) + "/";
+    }
 }

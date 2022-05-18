@@ -16,6 +16,7 @@ public class MembershipService implements ClusterMembership {
     private final int multicastIPPort;
     private final String nodeId;
     private final boolean isRootNode;
+    private final String folderPath;
     private int membershipCounter;  // NEEDS TO BE STORED IN NON-VOLATILE MEMORY
     private static final int maxRetransmissions = 3;
 
@@ -25,6 +26,8 @@ public class MembershipService implements ClusterMembership {
         this.multicastIPPort = multicastIPPort;
         this.nodeId = nodeId;
         this.isRootNode = isRootNode;
+        this.folderPath = Utils.generateFolderPath(nodeId);
+        this.createNodeFolder();
         // this.createMembershipLog();
     }
 
@@ -69,8 +72,19 @@ public class MembershipService implements ClusterMembership {
         return multicastIpAddr;
     }
 
-    public void createMembershipLog() {
-        File memberLog = new File("src/server/assets/membershipLog");
+    private void createNodeFolder() {
+        String folderPath = "database/" + Utils.generateKey(this.nodeId) + "/";
+        File folder = new File(folderPath);
+
+        if (!folder.mkdirs() && !folder.isDirectory()) {
+            System.out.println("Error creating the node's folder: " + folderPath);
+        } else {
+            this.createMembershipLog();
+        }
+    }
+
+    private void createMembershipLog() {
+        File memberLog = new File(this.folderPath + "membership.log");
         try {
             if(!memberLog.createNewFile()) {
                 PrintWriter writer = new PrintWriter(memberLog);
