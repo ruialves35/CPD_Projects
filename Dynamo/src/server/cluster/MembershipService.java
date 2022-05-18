@@ -5,11 +5,9 @@ import common.Sender;
 import common.Utils;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.nio.charset.StandardCharsets;
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.util.SortedMap;
 import java.util.TreeMap;
 
 public class MembershipService implements ClusterMembership {
