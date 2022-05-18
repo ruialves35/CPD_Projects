@@ -1,7 +1,6 @@
 package server.network;
 
 import java.io.*;
-import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 
 /**
@@ -10,7 +9,6 @@ import java.nio.charset.StandardCharsets;
  * | action           |     ( join/leave/get/put/delete)
  * | CRLF             |
  * | Body             |
- *
  */
 public class Message {
     static public int MAX_MSG_SIZE = 10000;
@@ -25,17 +23,21 @@ public class Message {
     }
 
     public Message(byte[] bytes) {
-        // TODO Parse bytes
+        final ByteArrayInputStream stream = new ByteArrayInputStream(bytes);
         final BufferedReader reader = new BufferedReader(new InputStreamReader(new ByteArrayInputStream(bytes)));
         try {
-            reader.readLine();
+            this.type = reader.readLine();
+            this.action = reader.readLine();
+            reader.readLine(); // last empty line
+
+            int bodyOffset = type.length() + action.length() + 6; // 6 chars used for newlines
+
+            //noinspection ResultOfMethodCallIgnored
+            stream.skip(bodyOffset);
+            this.body = stream.readAllBytes();
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
-
-        this.type = null;
-        this.action = null;
-        this.body = null;
     }
 
     /**
@@ -61,5 +63,17 @@ public class Message {
         }
 
         return out.toByteArray();
+    }
+
+    public String getType() {
+        return type;
+    }
+
+    public String getAction() {
+        return action;
+    }
+
+    public byte[] getBody() {
+        return body;
     }
 }
