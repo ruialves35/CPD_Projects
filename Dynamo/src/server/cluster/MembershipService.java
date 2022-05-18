@@ -2,7 +2,9 @@ package server.cluster;
 
 import server.network.Message;
 import server.Utils;
+import server.network.Sender;
 
+import java.nio.charset.StandardCharsets;
 import java.util.SortedMap;
 import java.util.TreeMap;
 
@@ -48,8 +50,8 @@ public class MembershipService implements ClusterMembership {
     }
 
     private void multicastJoin() {
-        Message msg = new Message(this.multicastIpAddr, this.multicastIPPort);
-        msg.sendMulticast("request", "get", "ola multicast");
+        Message msg = new Message("request", "get", "ola multicast".getBytes(StandardCharsets.UTF_8));
+        Sender.sendMulticast(msg.toBytes(), this.multicastIpAddr, this.multicastIPPort);
     }
 
     public int getMulticastIPPort() {
