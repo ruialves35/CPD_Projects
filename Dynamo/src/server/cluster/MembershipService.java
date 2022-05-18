@@ -1,10 +1,8 @@
 package server.cluster;
 
-import server.Message;
+import server.network.Message;
 import server.Utils;
 
-import java.io.IOException;
-import java.net.*;
 import java.util.SortedMap;
 import java.util.TreeMap;
 

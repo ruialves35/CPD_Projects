@@ -1,6 +1,5 @@
 package server.network;
 
-import server.Message;
 import server.cluster.MembershipService;
 import server.storage.StorageService;
 import server.storage.TransferService;
