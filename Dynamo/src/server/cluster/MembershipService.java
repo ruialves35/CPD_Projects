@@ -4,6 +4,7 @@ import common.Message;
 import common.Sender;
 import common.Utils;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.io.File;
 import java.io.IOException;
@@ -26,7 +27,7 @@ public class MembershipService implements ClusterMembership {
         this.multicastIPPort = multicastIPPort;
         this.nodeId = nodeId;
         this.isRootNode = isRootNode;
-        this.createMembershipLog();
+        // this.createMembershipLog();
     }
 
     @Override
@@ -56,12 +57,10 @@ public class MembershipService implements ClusterMembership {
     }
 
     private void multicastJoin() {
-        Message msg = new Message("request", "get", "ola multicast".getBytes(StandardCharsets.UTF_8));
-        try {
-            Sender.sendMulticast(msg.toBytes(), this.multicastIpAddr, this.multicastIPPort);
-        } catch (IOException e) {
-            System.out.println("Error sending multicast join");
-        }
+        ByteBuffer body = ByteBuffer.allocate(4);
+        body.putInt(this.membershipCounter);
+        Message msg = new Message("request", "join", body.array());
+        Sender.sendMulticast(msg.toBytes(), this.multicastIpAddr, this.multicastIPPort);
     }
 
     public int getMulticastIPPort() {
