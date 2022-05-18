@@ -27,7 +27,6 @@ public class Store {
             isRootNode = Boolean.parseBoolean(args[4]);
         }
 
-
         final MembershipService membershipService = new MembershipService(multicastIPAddr, multicastIPPort, nodeId, isRootNode);
         final StorageService storageService = new StorageService(membershipService.getNodeMap());
         final TransferService transferService = new TransferService(membershipService.getNodeMap());
@@ -36,7 +35,7 @@ public class Store {
         executorService.submit(new TCPListener(storageService, membershipService, transferService, executorService, storePort));
 
         if (membershipService.join()) {
-            executorService.submit(new UDPListener  (storageService, membershipService, transferService, executorService));
+            executorService.submit(new UDPListener(storageService, membershipService, transferService, executorService));
         }
     }
 }

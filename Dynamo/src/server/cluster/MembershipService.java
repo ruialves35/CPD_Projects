@@ -32,7 +32,7 @@ public class MembershipService implements ClusterMembership {
         // TODO Join protocol
         this.multicastJoin();
 
-        Node newNode = new Node("temp");
+        Node newNode = new Node("temp", 123);
         String key = Utils.generateKey("temp");
         nodeMap.put(key, newNode);
 
