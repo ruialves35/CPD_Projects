@@ -2,11 +2,14 @@ package server.storage;
 
 import server.Utils;
 import server.cluster.Node;
+import server.network.Message;
+import server.network.Sender;
 
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import java.util.TreeMap;
 
@@ -22,13 +25,13 @@ public class StorageService implements KeyValue {
     }
 
     @Override
-    public String put(byte[] value) {
-        String key = Utils.generateKey(value);
-
+    // TODO Key should be computed by the client and passed as argument
+    public void put(String key, byte[] value) {
         Node node = getResponsibleNode(key);
         if (!node.getId().equals(ownID)) {
-            // TODO Request put to the node
-            return null;
+            Message message = new Message("REQ", "put", value);
+            Sender.sendTCPMessage(message.toBytes(), node.getId(), node.getPort());
+            return;
         }
 
         String filePath = dbFolder + key;
@@ -37,17 +40,17 @@ public class StorageService implements KeyValue {
         } catch (IOException e) {
             System.out.println("Error opening file in put operation: " + filePath);
             e.printStackTrace();
-            return null;
         }
-
-        return key;
     }
 
     @Override
+    // TODO Send file to the client
     public byte[] get(String key) {
         Node node = getResponsibleNode(key);
         if (!node.getId().equals(ownID)) {
-            // TODO Request get to the node
+            Message message = new Message("REQ", "get", key.getBytes(StandardCharsets.UTF_8));
+            Sender.sendTCPMessage(message.toBytes(), node.getId(), node.getPort());
+            // TODO How to get reply and send the file to the client
             return null;
         }
 
@@ -69,7 +72,8 @@ public class StorageService implements KeyValue {
     public void delete(String key) {
         Node node = getResponsibleNode(key);
         if (!node.getId().equals(ownID)) {
-            // TODO Request delete to the node
+            Message message = new Message("REQ", "delete", key.getBytes(StandardCharsets.UTF_8));
+            Sender.sendTCPMessage(message.toBytes(), node.getId(), node.getPort());
             return;
         }
 
