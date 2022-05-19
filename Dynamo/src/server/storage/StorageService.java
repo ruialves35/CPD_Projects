@@ -1,9 +1,9 @@
 package server.storage;
 
-import server.Utils;
+import common.Utils;
 import server.cluster.Node;
-import server.network.Message;
-import server.network.Sender;
+import common.Message;
+import common.Sender;
 
 import java.io.File;
 import java.io.FileInputStream;

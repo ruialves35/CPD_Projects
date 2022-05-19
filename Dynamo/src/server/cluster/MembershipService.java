@@ -1,8 +1,8 @@
 package server.cluster;
 
-import server.network.Message;
-import server.Utils;
-import server.network.Sender;
+import common.Utils;
+import common.Message;
+import common.Sender;
 
 import java.nio.charset.StandardCharsets;
 import java.util.TreeMap;
@@ -29,8 +29,8 @@ public class MembershipService implements ClusterMembership {
         // TODO Join protocol
         if (!this.isRootNode) this.multicastJoin();
 
-        Node newNode = new Node(multicastIpAddr, multicastIPPort);
-        String key = Utils.generateKey(nodeId);
+        Node newNode = new Node("127.0.0.1", 3000);
+        String key = Utils.generateKey("temp");
         nodeMap.put(key, newNode);
 
         return true;

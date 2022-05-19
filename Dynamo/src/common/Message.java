@@ -1,4 +1,4 @@
-package server.network;
+package common;
 
 import java.io.*;
 import java.nio.charset.StandardCharsets;

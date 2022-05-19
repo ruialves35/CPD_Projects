@@ -43,7 +43,7 @@ public class Store {
 
         // TODO Adapt this to the client
         /*
-        Path path = Paths.get("./Utils.java");
+        Path path = Paths.get("./common.Utils.java");
         byte[] data = Files.readAllBytes(path);
         String key = storageService.put(data);
         System.out.println("Key = " + key);

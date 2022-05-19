@@ -1,4 +1,4 @@
-package server;
+package common;
 
 import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
