@@ -46,35 +46,7 @@ public class TestClient {
         String nodeIP = nodeInfo[0];
         int nodePort = Integer.parseInt(nodeInfo[1]);
 
-        String key;
-        byte[] file = null;
-
-        if (operation.equals("put")) {
-            try {
-                Path path = Paths.get(operand);
-                file = Files.readAllBytes(path);
-                key = Utils.generateKey(file);
-                System.out.println("Key=" + key);
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
-        } else {
-            key = operand;
-        }
-
-        ByteArrayOutputStream out = new ByteArrayOutputStream();
-        try {
-            out.write(key.getBytes(StandardCharsets.UTF_8));
-            if (file != null) {
-                out.write("\r\n".getBytes(StandardCharsets.UTF_8));
-                out.write(file);
-            }
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-        byte[] body = out.toByteArray();
-
-        Message msg = new Message("REQ", operation, body);
+        Message msg = buildKeyValueRequest(operand, operation);
         Message reply;
         do {
             reply = new Message(Sender.sendTCPMessage(msg.toBytes(), nodeIP, nodePort));
@@ -94,6 +66,50 @@ public class TestClient {
                 System.out.println("Received " + reply.getAction() + " reply");
             }
         } while (reply.getAction().equals("redirect"));
+
+        if (operation.equals("get") && !reply.getAction().equals("error"))
+            saveFile(reply.getBody());
+    }
+
+    private Message buildKeyValueRequest(String operand, String operation) {
+        String key;
+        byte[] file = null;
+
+        if (operation.equals("put")) {
+            try {
+                final Path path = Paths.get(operand);
+                file = Files.readAllBytes(path);
+                key = Utils.generateKey(file);
+                System.out.println("Generated Key = " + key);
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        } else {
+            key = operand;
+        }
+
+        final ByteArrayOutputStream out = new ByteArrayOutputStream();
+        try {
+            out.write(key.getBytes(StandardCharsets.UTF_8));
+            if (file != null) {
+                out.write("\r\n".getBytes(StandardCharsets.UTF_8));
+                out.write(file);
+            }
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+        byte[] body = out.toByteArray();
+
+        return new Message("REQ", operation, body);
+    }
+
+    private void saveFile(byte[] value) {
+        // TODO Where should we save the file?
+        try (FileOutputStream fos = new FileOutputStream("file")) {
+            fos.write(value);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     private void membershipOperation(String nodeAP, String operation) {
