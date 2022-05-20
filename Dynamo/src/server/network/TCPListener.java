@@ -38,15 +38,15 @@ public class TCPListener implements Runnable {
                     " port " + serverSocket.getLocalPort() + " ...");
             while (true) {
                 Socket socket = serverSocket.accept();
-                DataInputStream stream = new DataInputStream(socket.getInputStream());
+                DataInputStream istream = new DataInputStream(socket.getInputStream());
+                DataOutputStream ostream = new DataOutputStream(socket.getOutputStream());
 
-                String replyIp = socket.getInetAddress().getHostAddress();
-                int replyPort = socket.getPort();
-
-                Message message = new Message(stream.readAllBytes());
+                Message message = new Message(istream.readAllBytes());
                 executorService.submit(() -> {
                     try {
-                        processEvent(message, replyIp, replyPort);
+                        processEvent(message, ostream);
+                        istream.close();
+                        ostream.close();
                     } catch (IOException e) {
                         System.out.println("Error processing event");
                     }
@@ -61,21 +61,14 @@ public class TCPListener implements Runnable {
         }
     }
 
-    private void processEvent(Message message, String replyIp, int replyPort) throws IOException {
+    private void processEvent(Message message, DataOutputStream ostream) throws IOException {
         final ByteArrayInputStream stream = new ByteArrayInputStream(message.getBody());
         final BufferedReader reader = new BufferedReader(new InputStreamReader(
                 new ByteArrayInputStream(message.getBody())));
+        byte[] reply;
 
         switch (message.getAction()) {
-            case "get" -> {
-                // TODO Normal get -> send to te IP which requested
-                byte[] file = storageService.get(new String(message.getBody()));
-                Message reply = new Message("REP", "get", file);
-                Sender.sendTCPMessage(reply.toBytes(), replyIp, replyPort);
-            }
-            case "forwardGet" -> {
-                // TODO Forward -> Get the IP from the body ??
-            }
+            case "get" -> reply = storageService.get(new String(message.getBody()));
             case "put" -> {
                 String key = reader.readLine();
                 int offset = key.length() + 2; // 2 = \r\n
@@ -83,9 +76,15 @@ public class TCPListener implements Runnable {
                 //noinspection ResultOfMethodCallIgnored
                 stream.skip(offset);
                 byte[] file = stream.readAllBytes();
-                storageService.put(key, file);
+                reply = storageService.put(key, file);
             }
-            case "delete" -> storageService.delete(new String(message.getBody()));
+            case "delete" -> reply = storageService.delete(new String(message.getBody()));
+            default -> {
+                System.out.println("Invalid event received!");
+                reply = new byte[0];
+            }
         }
+
+        ostream.write(reply);
     }
 }

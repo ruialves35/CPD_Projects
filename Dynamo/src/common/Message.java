@@ -61,7 +61,7 @@ public class Message {
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         try {
             out.write(sb.toString().getBytes(StandardCharsets.UTF_8));
-            out.write(body);
+            if (body != null) out.write(body);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }

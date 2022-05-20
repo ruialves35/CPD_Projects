@@ -1,5 +1,6 @@
 package common;
 
+import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.net.DatagramPacket;
@@ -25,18 +26,22 @@ public class Sender {
         }
     }
 
-    public static void sendTCPMessage(byte[] msg, String ipAddr, int ipPort) {
+    public static byte[] sendTCPMessage(byte[] msg, String ipAddr, int ipPort) {
         try {
             Socket socket = new Socket(ipAddr, ipPort);
-            DataOutputStream stream = new DataOutputStream(socket.getOutputStream());
+            DataOutputStream ostream = new DataOutputStream(socket.getOutputStream());
+            DataInputStream istream = new DataInputStream(socket.getInputStream());
 
-            stream.write(msg);
+            ostream.write(msg);
+            socket.shutdownOutput();
+            byte[] response = istream.readAllBytes();
 
-            stream.flush();
-            stream.close();
+            istream.close();
             socket.close();
+
+            return response;
         } catch (IOException e) {
-            e.printStackTrace();
+            throw new RuntimeException(e);
         }
     }
 }

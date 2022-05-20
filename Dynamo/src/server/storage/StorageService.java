@@ -3,7 +3,6 @@ package server.storage;
 import common.Utils;
 import server.cluster.Node;
 import common.Message;
-import common.Sender;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -26,13 +25,10 @@ public class StorageService implements KeyValue {
 
     @Override
     // TODO Key should be computed by the client and passed as argument
-    public void put(String key, byte[] value) {
+    public byte[] put(String key, byte[] value) {
         Node node = getResponsibleNode(key);
-        if (!node.getId().equals(ownID)) {
-            Message message = new Message("REQ", "put", value);
-            Sender.sendTCPMessage(message.toBytes(), node.getId(), node.getPort());
-            return;
-        }
+        if (!node.getId().equals(ownID))
+            return buildRedirectMessage(node);
 
         String filePath = dbFolder + key;
         try (FileOutputStream fos = new FileOutputStream(filePath)) {
@@ -41,18 +37,17 @@ public class StorageService implements KeyValue {
             System.out.println("Error opening file in put operation: " + filePath);
             e.printStackTrace();
         }
+
+        Message reply = new Message("REP", "ok", null);
+        return reply.toBytes();
     }
 
     @Override
     // TODO Send file to the client
     public byte[] get(String key) {
         Node node = getResponsibleNode(key);
-        if (!node.getId().equals(ownID)) {
-            Message message = new Message("REQ", "get", key.getBytes(StandardCharsets.UTF_8));
-            Sender.sendTCPMessage(message.toBytes(), node.getId(), node.getPort());
-            // TODO How to get reply and send the file to the client
-            return null;
-        }
+        if (!node.getId().equals(ownID))
+            return buildRedirectMessage(node);
 
         String filePath = dbFolder + key;
         byte[] value;
@@ -65,23 +60,24 @@ public class StorageService implements KeyValue {
             return null;
         }
 
-        return value;
+        Message reply = new Message("REP", "ok", value);
+        return reply.toBytes();
     }
 
     @Override
-    public void delete(String key) {
+    public byte[] delete(String key) {
         Node node = getResponsibleNode(key);
-        if (!node.getId().equals(ownID)) {
-            Message message = new Message("REQ", "delete", key.getBytes(StandardCharsets.UTF_8));
-            Sender.sendTCPMessage(message.toBytes(), node.getId(), node.getPort());
-            return;
-        }
+        if (!node.getId().equals(ownID))
+            return buildRedirectMessage(node);
 
         String filePath = dbFolder + key;
         File file = new File(filePath);
         if (!file.delete()) {
             System.out.println("Error deleting the file: " + filePath);
         }
+
+        Message reply = new Message("REP", "ok", null);
+        return reply.toBytes();
     }
 
     /**
@@ -106,5 +102,11 @@ public class StorageService implements KeyValue {
         }
 
         return folderPath;
+    }
+
+    private byte[] buildRedirectMessage(Node newNode) {
+        String redirectInfo = newNode.getId() + "\r\n" + newNode.getPort();
+        Message reply = new Message("REP", "redirect", redirectInfo.getBytes(StandardCharsets.UTF_8));
+        return reply.toBytes();
     }
 }

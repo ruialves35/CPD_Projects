@@ -30,8 +30,12 @@ public class MembershipService implements ClusterMembership {
         if (!this.isRootNode) this.multicastJoin();
 
         Node newNode = new Node("127.0.0.1", 3000);
-        String key = Utils.generateKey("temp");
+        String key = Utils.generateKey("127.0.0.1");
         nodeMap.put(key, newNode);
+
+        Node newNode2 = new Node("127.0.0.2", 3000);
+        String key2 = Utils.generateKey("127.0.0.2");
+        nodeMap.put(key2, newNode2);
 
         return true;
     }
