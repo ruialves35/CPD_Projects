@@ -4,8 +4,7 @@ import common.Message;
 import common.Sender;
 import common.Utils;
 
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
+import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -76,7 +75,25 @@ public class TestClient {
         byte[] body = out.toByteArray();
 
         Message msg = new Message("REQ", operation, body);
-        Sender.sendTCPMessage(msg.toBytes(), nodeIP, nodePort);
+        Message reply;
+        do {
+            reply = new Message(Sender.sendTCPMessage(msg.toBytes(), nodeIP, nodePort));
+            System.out.println("Sent " + operation + " request to " + nodeIP + ":" + nodePort);
+
+            if (reply.getAction().equals("redirect")) {
+                final BufferedReader reader = new BufferedReader(new InputStreamReader(
+                        new ByteArrayInputStream(reply.getBody())));
+                try {
+                    nodeIP = reader.readLine();
+                    nodePort = Integer.parseInt(reader.readLine());
+                    System.out.println("Redirecting to " + nodeIP + ":" + nodePort);
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
+            } else {
+                System.out.println("Received " + reply.getAction() + " reply");
+            }
+        } while (reply.getAction().equals("redirect"));
     }
 
     private void membershipOperation(String nodeAP, String operation) {
