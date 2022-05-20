@@ -32,7 +32,7 @@ public class UDPListener implements Runnable {
             NetworkInterface netInf = NetworkInterface.getByIndex(0);
             socket.joinGroup(group, netInf);
 
-            System.out.println("Listening UDP messages\n");
+            System.out.println("Listening UDP messages");
             while (true) {
                 byte[] msg = new byte[Message.MAX_MSG_SIZE];
                 DatagramPacket packet = new DatagramPacket(msg, msg.length);
@@ -47,7 +47,8 @@ public class UDPListener implements Runnable {
             socket.leaveGroup(group, netInf);
             socket.close();
         } catch (IOException e) {
-            e.printStackTrace();
+            System.out.println("Error opening UDP server");
+            throw new RuntimeException(e);
         }
     }
 

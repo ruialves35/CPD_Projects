@@ -35,7 +35,7 @@ public class TCPListener implements Runnable {
             InetAddress addr = InetAddress.getByName(nodeIp);
             ServerSocket serverSocket = new ServerSocket(this.port, 50, addr);
             System.out.println("Listening for TCP Messages in address " + serverSocket.getInetAddress() +
-                    " port " + serverSocket.getLocalPort() + " ...");
+                    " port " + serverSocket.getLocalPort());
             while (true) {
                 Socket socket = serverSocket.accept();
                 DataInputStream istream = new DataInputStream(socket.getInputStream());
@@ -49,6 +49,15 @@ public class TCPListener implements Runnable {
                         ostream.close();
                     } catch (IOException e) {
                         System.out.println("Error processing event");
+                        // TODO Handle specific errors
+                        Message errorMsg = new Message("REP", "error", null);
+                        try {
+                            ostream.write(errorMsg.toBytes());
+                            istream.close();
+                            ostream.close();
+                        } catch (IOException ioException) {
+                            System.out.println("Error sending error message");
+                        }
                     }
                 });
 
@@ -57,7 +66,8 @@ public class TCPListener implements Runnable {
             serverSocket.close();
             }
         catch (IOException e) {
-            e.printStackTrace();
+            System.out.println("Error opening TCP server");
+            throw new RuntimeException(e);
         }
     }
 

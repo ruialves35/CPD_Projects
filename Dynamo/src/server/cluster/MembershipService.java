@@ -4,6 +4,7 @@ import common.Utils;
 import common.Message;
 import common.Sender;
 
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.TreeMap;
 
@@ -52,7 +53,11 @@ public class MembershipService implements ClusterMembership {
 
     private void multicastJoin() {
         Message msg = new Message("request", "get", "ola multicast".getBytes(StandardCharsets.UTF_8));
-        Sender.sendMulticast(msg.toBytes(), this.multicastIpAddr, this.multicastIPPort);
+        try {
+            Sender.sendMulticast(msg.toBytes(), this.multicastIpAddr, this.multicastIPPort);
+        } catch (IOException e) {
+            System.out.println("Error sending multicast join");
+        }
     }
 
     public int getMulticastIPPort() {

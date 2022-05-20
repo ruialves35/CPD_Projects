@@ -34,7 +34,7 @@ public class StorageService implements KeyValue {
             fos.write(value);
         } catch (IOException e) {
             System.out.println("Error opening file in put operation: " + filePath);
-            e.printStackTrace();
+            return new Message("REP", "error", null);
         }
 
         return new Message("REP", "ok", null);
@@ -53,8 +53,7 @@ public class StorageService implements KeyValue {
             value = fis.readAllBytes();
         } catch (IOException e) {
             System.out.println("Error opening file in get operation: " + filePath);
-            e.printStackTrace();
-            return null;
+            return new Message("REP", "error", null);
         }
 
         return new Message("REP", "ok", value);
@@ -70,6 +69,7 @@ public class StorageService implements KeyValue {
         File file = new File(filePath);
         if (!file.delete()) {
             System.out.println("Error deleting the file: " + filePath);
+            return new Message("REP", "error", null);
         }
 
         return new Message("REP", "ok", null);

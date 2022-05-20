@@ -35,13 +35,21 @@ public class TestClient {
 
         TestClient client = new TestClient();
 
-        if (operation.equals("join") || operation.equals("leave"))
-            client.membershipOperation(nodeAP, operation);
-        else
-            client.keyValueOperation(nodeAP, operation, operand);
+            if (operation.equals("join") || operation.equals("leave"))
+                client.membershipOperation(nodeAP, operation);
+            else {
+                try {
+                    client.keyValueOperation(nodeAP, operation, operand);
+                } catch (IOException e) {
+                    // TODO Handle specific errors
+                    System.out.println("Client sided error:");
+                    e.printStackTrace();
+                }
+            }
+
     }
 
-    private void keyValueOperation(String nodeAP, String operation, String operand) {
+    private void keyValueOperation(String nodeAP, String operation, String operand) throws IOException {
         String[] nodeInfo = nodeAP.split(":", 2);
         String nodeIP = nodeInfo[0];
         int nodePort = Integer.parseInt(nodeInfo[1]);
@@ -55,13 +63,9 @@ public class TestClient {
             if (reply.getAction().equals("redirect")) {
                 final BufferedReader reader = new BufferedReader(new InputStreamReader(
                         new ByteArrayInputStream(reply.getBody())));
-                try {
-                    nodeIP = reader.readLine();
-                    nodePort = Integer.parseInt(reader.readLine());
-                    System.out.println("Redirecting to " + nodeIP + ":" + nodePort);
-                } catch (IOException e) {
-                    throw new RuntimeException(e);
-                }
+                nodeIP = reader.readLine();
+                nodePort = Integer.parseInt(reader.readLine());
+                System.out.println("Redirecting to " + nodeIP + ":" + nodePort);
             } else {
                 System.out.println("Received " + reply.getAction() + " reply");
             }
@@ -71,44 +75,34 @@ public class TestClient {
             saveFile(reply.getBody());
     }
 
-    private Message buildKeyValueRequest(String operand, String operation) {
+    private Message buildKeyValueRequest(String operand, String operation) throws IOException {
         String key;
         byte[] file = null;
 
         if (operation.equals("put")) {
-            try {
-                final Path path = Paths.get(operand);
-                file = Files.readAllBytes(path);
-                key = Utils.generateKey(file);
-                System.out.println("Generated Key = " + key);
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
+            final Path path = Paths.get(operand);
+            file = Files.readAllBytes(path);
+            key = Utils.generateKey(file);
+            System.out.println("Generated Key = " + key);
         } else {
             key = operand;
         }
 
         final ByteArrayOutputStream out = new ByteArrayOutputStream();
-        try {
-            out.write(key.getBytes(StandardCharsets.UTF_8));
-            if (file != null) {
-                out.write("\r\n".getBytes(StandardCharsets.UTF_8));
-                out.write(file);
-            }
-        } catch (IOException e) {
-            throw new RuntimeException(e);
+        out.write(key.getBytes(StandardCharsets.UTF_8));
+        if (file != null) {
+            out.write("\r\n".getBytes(StandardCharsets.UTF_8));
+            out.write(file);
         }
         byte[] body = out.toByteArray();
 
         return new Message("REQ", operation, body);
     }
 
-    private void saveFile(byte[] value) {
+    private void saveFile(byte[] value) throws IOException {
         // TODO Where should we save the file?
         try (FileOutputStream fos = new FileOutputStream("file")) {
             fos.write(value);
-        } catch (IOException e) {
-            throw new RuntimeException(e);
         }
     }
 
