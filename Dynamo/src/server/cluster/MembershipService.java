@@ -3,13 +3,12 @@ package server.cluster;
 import common.Message;
 import common.Sender;
 import common.Utils;
-import java.io.IOException;
-import java.io.FileWriter;
+import java.io.*;
 import java.nio.ByteBuffer;
-import java.io.File;
-import java.io.IOException;
-import java.io.PrintWriter;
-import java.util.TreeMap;
+import java.nio.file.Files;
+import java.nio.file.StandardOpenOption;
+import java.util.*;
+import java.util.stream.Collectors;
 
 public class MembershipService implements ClusterMembership {
     private final TreeMap<String, Node> nodeMap;
@@ -18,7 +17,7 @@ public class MembershipService implements ClusterMembership {
     private final String nodeId;
     private final boolean isRootNode;
     private final String folderPath;
-    private int membershipCounter;  // NEEDS TO BE STORED IN NON-VOLATILE MEMORY TO SURVIVE NODE CRASHES
+    private int membershipCounter = 0;  // NEEDS TO BE STORED IN NON-VOLATILE MEMORY TO SURVIVE NODE CRASHES
     private static final int maxRetransmissions = 3;
 
     public MembershipService(String multicastIPAddr, int multicastIPPort, String nodeId, boolean isRootNode) {
@@ -60,7 +59,7 @@ public class MembershipService implements ClusterMembership {
     private void multicastJoin() {
         ByteBuffer body = ByteBuffer.allocate(4);
         body.putInt(this.membershipCounter);
-        Message msg = new Message("request", "join", body.array());
+        Message msg = new Message("request", "join", this.nodeId, body.array());
         Sender.sendMulticast(msg.toBytes(), this.multicastIpAddr, this.multicastIPPort);
     }
 
@@ -92,6 +91,42 @@ public class MembershipService implements ClusterMembership {
             writer.close();
         } catch (IOException e) {
             throw new RuntimeException(e);
+        }
+    }
+
+    /**
+     * Adds a new log to the beginning of the membership log removing existing logs for that nodeId
+     */
+    public void addLog(String nodeId, int membershipCounter) {
+        try {
+            File file = new File(this.folderPath + "membership.log");
+
+            List<String> filteredFile = new ArrayList<>();
+            filteredFile.add(String.format("%s %d", nodeId, membershipCounter));
+            filteredFile.addAll(
+                Files.lines(file.toPath()).filter(line -> {
+                    Optional<String> optId = Arrays.stream(line.split(" ")).findFirst();
+                    String rowId = optId.orElse("");
+                    return !nodeId.equals(rowId);
+                }).collect(Collectors.toList()));
+
+            Files.write(file.toPath(), filteredFile, StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING);
+
+            /*
+            Scanner myReader = new Scanner(myObj);
+
+            while (myReader.hasNextLine()) {
+                Optional<String> optId = Arrays.stream(myReader.nextLine().split(" ")).findFirst();
+                String rowId = optId.orElse("");
+                if (nodeId.equals(rowId)) {
+
+                }
+            } */
+        } catch (FileNotFoundException e) {
+            System.out.println("An error occurred.");
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
         }
     }
 }

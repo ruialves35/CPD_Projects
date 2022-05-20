@@ -66,12 +66,14 @@ public class UDPListener implements Runnable {
         Message message = new Message(packet.getData());
 
         // TODO Parse message and generate event
-        System.out.println("Received packet: \n" + packet.getData().toString());
+        System.out.println("Received message from: \n" + message.getNodeId());
         System.out.println("-----------------");
 
         ByteBuffer bb = ByteBuffer.wrap(message.getBody());
         int membershipCounter = bb.getInt();
         System.out.println("GOT body: " + membershipCounter);
+
+        this.membershipService.addLog(message.getNodeId(), membershipCounter);
 
         return "end".equals(message);
     }

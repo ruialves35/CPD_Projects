@@ -5,8 +5,9 @@ import java.nio.charset.StandardCharsets;
 
 /**
  * Message Structure
- * | type             |     (Request or Reply)
- * | action           |     ( join/leave/get/put/delete)
+ * | type             |     ( Request or Reply )
+ * | action           |     ( join/leave/get/put/delete )
+ * | Ip Address       |     ( nodeId )
  * | CRLF             |
  * | Body             |
  */
@@ -14,11 +15,13 @@ public class Message {
     static public int MAX_MSG_SIZE = 10000;
     private final String type;
     private final String action;
+    private final String nodeId;
     private final byte[] body;
 
-    public Message(String type, String action, byte[] body) {
+    public Message(String type, String action, String nodeId, byte[] body) {
         this.type = type;
         this.action = action;
+        this.nodeId = nodeId;
         this.body = body;
     }
 
@@ -27,9 +30,10 @@ public class Message {
         final BufferedReader reader = new BufferedReader(new InputStreamReader(new ByteArrayInputStream(bytes)));
         this.type = reader.readLine();
         this.action = reader.readLine();
+        this.nodeId = reader.readLine();
         reader.readLine(); // last empty line
 
-        int bodyOffset = type.length() + action.length() + 6; // 6 chars used for newlines
+        int bodyOffset = type.length() + action.length() + nodeId.length() + 6; // 6 chars used for newlines
 
         //noinspection ResultOfMethodCallIgnored
         stream.skip(bodyOffset);
@@ -50,6 +54,7 @@ public class Message {
 
         sb.append(type).append("\r\n");
         sb.append(action).append("\r\n");
+        sb.append(nodeId).append("\r\n");
 
         // empty line
         sb.append("\r\n");
@@ -68,6 +73,8 @@ public class Message {
     public String getAction() {
         return action;
     }
+
+    public String getNodeId() { return nodeId; }
 
     public byte[] getBody() {
         return body;
