@@ -24,8 +24,7 @@ public class StorageService implements KeyValue {
     }
 
     @Override
-    // TODO Key should be computed by the client and passed as argument
-    public byte[] put(String key, byte[] value) {
+    public Message put(String key, byte[] value) {
         Node node = getResponsibleNode(key);
         if (!node.getId().equals(ownID))
             return buildRedirectMessage(node);
@@ -38,13 +37,11 @@ public class StorageService implements KeyValue {
             e.printStackTrace();
         }
 
-        Message reply = new Message("REP", "ok", null);
-        return reply.toBytes();
+        return new Message("REP", "ok", null);
     }
 
     @Override
-    // TODO Send file to the client
-    public byte[] get(String key) {
+    public Message get(String key) {
         Node node = getResponsibleNode(key);
         if (!node.getId().equals(ownID))
             return buildRedirectMessage(node);
@@ -60,12 +57,11 @@ public class StorageService implements KeyValue {
             return null;
         }
 
-        Message reply = new Message("REP", "ok", value);
-        return reply.toBytes();
+        return new Message("REP", "ok", value);
     }
 
     @Override
-    public byte[] delete(String key) {
+    public Message delete(String key) {
         Node node = getResponsibleNode(key);
         if (!node.getId().equals(ownID))
             return buildRedirectMessage(node);
@@ -76,8 +72,7 @@ public class StorageService implements KeyValue {
             System.out.println("Error deleting the file: " + filePath);
         }
 
-        Message reply = new Message("REP", "ok", null);
-        return reply.toBytes();
+        return new Message("REP", "ok", null);
     }
 
     /**
@@ -104,9 +99,8 @@ public class StorageService implements KeyValue {
         return folderPath;
     }
 
-    private byte[] buildRedirectMessage(Node newNode) {
+    private Message buildRedirectMessage(Node newNode) {
         String redirectInfo = newNode.getId() + "\r\n" + newNode.getPort();
-        Message reply = new Message("REP", "redirect", redirectInfo.getBytes(StandardCharsets.UTF_8));
-        return reply.toBytes();
+        return new Message("REP", "redirect", redirectInfo.getBytes(StandardCharsets.UTF_8));
     }
 }

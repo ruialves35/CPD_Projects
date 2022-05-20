@@ -65,7 +65,7 @@ public class TCPListener implements Runnable {
         final ByteArrayInputStream stream = new ByteArrayInputStream(message.getBody());
         final BufferedReader reader = new BufferedReader(new InputStreamReader(
                 new ByteArrayInputStream(message.getBody())));
-        byte[] reply;
+        Message reply;
 
         switch (message.getAction()) {
             case "get" -> reply = storageService.get(new String(message.getBody()));
@@ -81,10 +81,10 @@ public class TCPListener implements Runnable {
             case "delete" -> reply = storageService.delete(new String(message.getBody()));
             default -> {
                 System.out.println("Invalid event received!");
-                reply = new byte[0];
+                return;
             }
         }
 
-        ostream.write(reply);
+        ostream.write(reply.toBytes());
     }
 }
