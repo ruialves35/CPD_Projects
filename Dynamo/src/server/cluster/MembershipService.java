@@ -4,6 +4,7 @@ import common.Message;
 import common.Sender;
 import common.Utils;
 import java.io.IOException;
+import java.io.FileWriter;
 import java.nio.ByteBuffer;
 import java.io.File;
 import java.io.IOException;
@@ -17,7 +18,7 @@ public class MembershipService implements ClusterMembership {
     private final String nodeId;
     private final boolean isRootNode;
     private final String folderPath;
-    private int membershipCounter;  // NEEDS TO BE STORED IN NON-VOLATILE MEMORY
+    private int membershipCounter;  // NEEDS TO BE STORED IN NON-VOLATILE MEMORY TO SURVIVE NODE CRASHES
     private static final int maxRetransmissions = 3;
 
     public MembershipService(String multicastIPAddr, int multicastIPPort, String nodeId, boolean isRootNode) {
@@ -28,7 +29,6 @@ public class MembershipService implements ClusterMembership {
         this.isRootNode = isRootNode;
         this.folderPath = Utils.generateFolderPath(nodeId);
         this.createNodeFolder();
-        // this.createMembershipLog();
     }
 
     @Override
@@ -78,6 +78,7 @@ public class MembershipService implements ClusterMembership {
         if (!folder.mkdirs() && !folder.isDirectory()) {
             System.out.println("Error creating the node's folder: " + this.folderPath);
         } else {
+            // The membership log should be updated with the one received by other nodes already belonging to the system
             this.createMembershipLog();
         }
     }
@@ -85,11 +86,10 @@ public class MembershipService implements ClusterMembership {
     private void createMembershipLog() {
         File memberLog = new File(this.folderPath + "membership.log");
         try {
-            if(!memberLog.createNewFile()) {
-                PrintWriter writer = new PrintWriter(memberLog);
-                writer.print("");
-                writer.close();
-            }
+            // Set initial log to be the current node
+            FileWriter writer = new FileWriter(memberLog, false);
+            writer.write(String.format("%s %d", this.nodeId, this.membershipCounter));
+            writer.close();
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
