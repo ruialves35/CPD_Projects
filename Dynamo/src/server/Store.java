@@ -1,6 +1,7 @@
 package server;
 
 import server.cluster.MembershipService;
+import server.cluster.Node;
 import server.network.TCPListener;
 import server.network.UDPListener;
 import server.storage.StorageService;
@@ -38,7 +39,9 @@ public class Store {
             executorService.submit(new UDPListener(storageService, membershipService, transferService, executorService));
         }
 
-        membershipService.join();
+
+        transferService.leave(new Node(nodeId, storePort));
+
 
         // TODO Adapt this to the client
         /*
