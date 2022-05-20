@@ -73,11 +73,10 @@ public class MembershipService implements ClusterMembership {
     }
 
     private void createNodeFolder() {
-        String folderPath = "database/" + Utils.generateKey(this.nodeId) + "/";
-        File folder = new File(folderPath);
+        File folder = new File(this.folderPath);
 
         if (!folder.mkdirs() && !folder.isDirectory()) {
-            System.out.println("Error creating the node's folder: " + folderPath);
+            System.out.println("Error creating the node's folder: " + this.folderPath);
         } else {
             this.createMembershipLog();
         }
