@@ -16,6 +16,7 @@ import java.net.*;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Random;
 import java.util.concurrent.ExecutorService;
 import java.util.stream.Stream;
 
@@ -63,17 +64,27 @@ public class UDPListener implements Runnable {
 
     private boolean processEvent(DatagramPacket packet) {
         //System.out.println("Got Packet from :" + packet.getAddress());
+        // TODO Parse message and generate event
         Message message = new Message(packet.getData());
 
-        // TODO Parse message and generate event
         System.out.println("Received message from: \n" + message.getNodeId());
         System.out.println("-----------------");
+
+        // ASSUMING THIS IS THE ONLY TYPE OF MESSAGE RECEIVED THROUGH UDP
 
         ByteBuffer bb = ByteBuffer.wrap(message.getBody());
         int membershipCounter = bb.getInt();
         System.out.println("GOT body: " + membershipCounter);
 
         this.membershipService.addLog(message.getNodeId(), membershipCounter);
+
+        final int randomWait = new Random().nextInt(10);
+        try {
+            Thread.sleep(randomWait * 1000);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+        // TODO: send membership message
 
         return "end".equals(message);
     }

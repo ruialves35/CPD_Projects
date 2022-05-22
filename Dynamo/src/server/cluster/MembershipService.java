@@ -78,13 +78,36 @@ public class MembershipService implements ClusterMembership {
             System.out.println("Error creating the node's folder: " + this.folderPath);
         } else {
             // The membership log should be updated with the one received by other nodes already belonging to the system
-            this.createMembershipLog();
+            this.initializeNodeFiles();
         }
     }
 
-    private void createMembershipLog() {
-        File memberLog = new File(this.folderPath + "membership.log");
+    private void initializeNodeFiles() {
         try {
+            File memberCounter = new File(this.folderPath + Utils.membershipCounterFileName);
+
+            boolean foundCounter = false;
+            if (!memberCounter.createNewFile()) {
+                // Recover membership counter
+                Scanner counterScanner = new Scanner(memberCounter);
+                if (counterScanner.hasNextInt()) {
+                    int counter = counterScanner.nextInt();
+                    this.membershipCounter = counter;
+                    foundCounter = true;
+                }
+
+                counterScanner.close();
+            }
+            if (!foundCounter) {
+                // Create file and store membership counter
+                FileWriter counterWriter = new FileWriter(memberCounter, false);
+                counterWriter.write(String.valueOf(this.membershipCounter));
+                counterWriter.close();
+            }
+
+
+            File memberLog = new File(this.folderPath + Utils.membershipLogFileName);
+
             // Set initial log to be the current node
             FileWriter writer = new FileWriter(memberLog, false);
             writer.write(String.format("%s %d", this.nodeId, this.membershipCounter));

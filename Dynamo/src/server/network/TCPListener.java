@@ -9,6 +9,8 @@ import java.io.*;
 import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.nio.charset.StandardCharsets;
+import java.util.Random;
 import java.util.concurrent.ExecutorService;
 
 public class TCPListener implements Runnable {
@@ -77,6 +79,11 @@ public class TCPListener implements Runnable {
         Message reply;
 
         switch (message.getAction()) {
+            case "join" -> {
+                // TODO: PARSE MEMBERSHIP MESSAGE (UPDATE LOG AND NODE MAP)
+                reply = new Message("REP", "ok", "".getBytes(StandardCharsets.UTF_8));
+                return;
+            }
             case "get" -> reply = storageService.get(new String(message.getBody()));
             case "put" -> {
                 String key = reader.readLine();
