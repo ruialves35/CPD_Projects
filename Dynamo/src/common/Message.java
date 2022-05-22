@@ -33,7 +33,7 @@ public class Message {
         this.nodeId = reader.readLine();
         reader.readLine(); // last empty line
 
-        int bodyOffset = type.length() + action.length() + nodeId.length() + 6; // 6 chars used for newlines
+        int bodyOffset = type.length() + action.length() + nodeId.length() + 8; // 2 chars used for newlines per row on top
 
         //noinspection ResultOfMethodCallIgnored
         stream.skip(bodyOffset);
@@ -45,6 +45,7 @@ public class Message {
      * where the first line is the header, in the format
      * Type
      * Action
+     * Node Id
      * (empty line)
      * Body
      * @return Byte array with the message
