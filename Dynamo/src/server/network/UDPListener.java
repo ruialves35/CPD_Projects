@@ -1,7 +1,9 @@
 package server.network;
 
 import common.Message;
+import common.Utils;
 import server.cluster.MembershipService;
+import server.cluster.Node;
 import server.storage.StorageService;
 import server.storage.TransferService;
 
@@ -15,6 +17,7 @@ import java.io.StringReader;
 import java.net.*;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.Random;
 import java.util.concurrent.ExecutorService;
@@ -77,13 +80,15 @@ public class UDPListener implements Runnable {
         System.out.println("GOT body: " + membershipCounter);
 
 
-        // this.membershipService.getNodeMap().put(key, value);
+        // Updates view of the cluster membership and adds the log
+        this.membershipService.getNodeMap().put(Utils.generateKey(message.getNodeId()), new Node(message.getNodeId(), message.getPort()));
         this.membershipService.addLog(message.getNodeId(), membershipCounter);
 
         final int randomWait = new Random().nextInt(10);
         try {
             Thread.sleep(randomWait * 1000);
 
+            Collection<Node> nodesList = this.membershipService.getNodeMap().values();
             ByteBuffer body = ByteBuffer.allocate(4);
             body.putInt(1);
             Message msg = new Message("reply", "join", this.membershipService.getNodeId(), this.membershipService.getTcpPort(), body.array());

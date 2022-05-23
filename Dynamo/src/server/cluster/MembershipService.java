@@ -35,16 +35,11 @@ public class MembershipService implements ClusterMembership {
 
     @Override
     public boolean join() {
-        // TODO Join protocol
-        if (!this.isRootNode) this.multicastJoin();
-
-        Node newNode = new Node("127.0.0.1", 3000);
-        String key = Utils.generateKey("127.0.0.1");
+        Node newNode = new Node(this.nodeId, this.tcpPort);
+        String key = Utils.generateKey(this.nodeId);
         nodeMap.put(key, newNode);
 
-        Node newNode2 = new Node("127.0.0.2", 3000);
-        String key2 = Utils.generateKey("127.0.0.2");
-        nodeMap.put(key2, newNode2);
+        if (this.isRootNode) return true;
 
         return true;
     }

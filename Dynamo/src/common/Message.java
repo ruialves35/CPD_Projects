@@ -50,7 +50,7 @@ public class Message {
      * where the first line is the header, in the format
      * Type
      * Action
-     * Node Id
+     * Node Id  SEND THE 2 things to the body
      * Port
      * (empty line)
      * Body
