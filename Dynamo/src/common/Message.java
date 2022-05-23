@@ -5,9 +5,10 @@ import java.nio.charset.StandardCharsets;
 
 /**
  * Message Structure
- * | type             |     ( Request or Reply )
+ * | type             |     ( request or reply )
  * | action           |     ( join/leave/get/put/delete )
- * | Ip Address       |     ( nodeId )
+ * | IpAddress        |     ( nodeId )
+ * | Port             |     ( Port )
  * | CRLF             |
  * | Body             |
  */
@@ -16,13 +17,16 @@ public class Message {
     private final String type;
     private final String action;
     private final String nodeId;
+
+    private final int port;
     private final byte[] body;
 
-    public Message(String type, String action, String nodeId, byte[] body) {
+    public Message(String type, String action, String nodeId, int port, byte[] body) {
         this.type = type;
         this.action = action;
         this.nodeId = nodeId;
         this.body = body;
+        this.port = port;
     }
 
     public Message(byte[] bytes) throws IOException {
@@ -31,9 +35,10 @@ public class Message {
         this.type = reader.readLine();
         this.action = reader.readLine();
         this.nodeId = reader.readLine();
+        this.port = Integer.parseInt(reader.readLine());
         reader.readLine(); // last empty line
 
-        int bodyOffset = type.length() + action.length() + nodeId.length() + 8; // 2 chars used for newlines per row on top
+        int bodyOffset = type.length() + action.length() + nodeId.length() + 4 + 10; // 2 chars used for newlines per row on top
 
         //noinspection ResultOfMethodCallIgnored
         stream.skip(bodyOffset);
@@ -46,6 +51,7 @@ public class Message {
      * Type
      * Action
      * Node Id
+     * Port
      * (empty line)
      * Body
      * @return Byte array with the message
@@ -56,6 +62,7 @@ public class Message {
         sb.append(type).append("\r\n");
         sb.append(action).append("\r\n");
         sb.append(nodeId).append("\r\n");
+        sb.append(port).append("\r\n");
 
         // empty line
         sb.append("\r\n");
@@ -76,6 +83,8 @@ public class Message {
     }
 
     public String getNodeId() { return nodeId; }
+
+    public int getPort() {return port;}
 
     public byte[] getBody() {
         return body;

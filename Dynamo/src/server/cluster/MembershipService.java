@@ -15,16 +15,19 @@ public class MembershipService implements ClusterMembership {
     private final String multicastIpAddr;
     private final int multicastIPPort;
     private final String nodeId;
+
+    private final int tcpPort;
     private final boolean isRootNode;
     private final String folderPath;
     private int membershipCounter = 0;  // NEEDS TO BE STORED IN NON-VOLATILE MEMORY TO SURVIVE NODE CRASHES
     private static final int maxRetransmissions = 3;
 
-    public MembershipService(String multicastIPAddr, int multicastIPPort, String nodeId, boolean isRootNode) {
+    public MembershipService(String multicastIPAddr, int multicastIPPort, String nodeId, int tcpPort, boolean isRootNode) {
         nodeMap = new TreeMap<>();
         this.multicastIpAddr = multicastIPAddr;
         this.multicastIPPort = multicastIPPort;
         this.nodeId = nodeId;
+        this.tcpPort = tcpPort;
         this.isRootNode = isRootNode;
         this.folderPath = Utils.generateFolderPath(nodeId);
         this.createNodeFolder();
@@ -59,7 +62,7 @@ public class MembershipService implements ClusterMembership {
     private void multicastJoin() {
         ByteBuffer body = ByteBuffer.allocate(4);
         body.putInt(this.membershipCounter);
-        Message msg = new Message("request", "join", this.nodeId, body.array());
+        Message msg = new Message("request", "join", this.nodeId, this.tcpPort, body.array());
         Sender.sendMulticast(msg.toBytes(), this.multicastIpAddr, this.multicastIPPort);
     }
 
@@ -70,6 +73,10 @@ public class MembershipService implements ClusterMembership {
     public String getMulticastIpAddr() {
         return multicastIpAddr;
     }
+
+    public String getNodeId() {return nodeId;}
+
+    public int getTcpPort() {return tcpPort;}
 
     private void createNodeFolder() {
         File folder = new File(this.folderPath);

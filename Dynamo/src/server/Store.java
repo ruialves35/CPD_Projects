@@ -27,7 +27,7 @@ public class Store {
             isRootNode = Boolean.parseBoolean(args[4]);
         }
 
-        final MembershipService membershipService = new MembershipService(multicastIPAddr, multicastIPPort, nodeId, isRootNode);
+        final MembershipService membershipService = new MembershipService(multicastIPAddr, multicastIPPort, nodeId, storePort, isRootNode);
         final StorageService storageService = new StorageService(membershipService.getNodeMap(), nodeId);
         final TransferService transferService = new TransferService(membershipService.getNodeMap());
         final ExecutorService executorService = Executors.newCachedThreadPool();

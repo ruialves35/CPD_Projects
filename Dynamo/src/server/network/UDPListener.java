@@ -67,7 +67,7 @@ public class UDPListener implements Runnable {
         // TODO Parse message and generate event
         Message message = new Message(packet.getData());
 
-        System.out.println("Received message from: \n" + message.getNodeId());
+        System.out.println("Received message from: \n" + message.getNodeId() + " with open tcp port: " + message.getPort());
         System.out.println("-----------------");
 
         // ASSUMING THIS IS THE ONLY TYPE OF MESSAGE RECEIVED THROUGH UDP
@@ -76,11 +76,18 @@ public class UDPListener implements Runnable {
         int membershipCounter = bb.getInt();
         System.out.println("GOT body: " + membershipCounter);
 
+
+        // this.membershipService.getNodeMap().put(key, value);
         this.membershipService.addLog(message.getNodeId(), membershipCounter);
 
         final int randomWait = new Random().nextInt(10);
         try {
             Thread.sleep(randomWait * 1000);
+
+            ByteBuffer body = ByteBuffer.allocate(4);
+            body.putInt(1);
+            Message msg = new Message("reply", "join", this.membershipService.getNodeId(), this.membershipService.getTcpPort(), body.array());
+
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
