@@ -6,15 +6,9 @@ import server.cluster.MembershipService;
 import server.cluster.Node;
 import server.storage.StorageService;
 import server.storage.TransferService;
-
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.net.DatagramPacket;
-import java.net.InetSocketAddress;
-import java.net.MulticastSocket;
-import java.net.NetworkInterface;
-import java.io.StringReader;
+import java.io.*;
 import java.net.*;
+import java.nio.Buffer;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -70,28 +64,34 @@ public class UDPListener implements Runnable {
         // TODO Parse message and generate event
         Message message = new Message(packet.getData());
 
-        System.out.println("Received message from: \n" + message.getNodeId() + " with open tcp port: " + message.getPort());
-        System.out.println("-----------------");
+        InputStream is = new ByteArrayInputStream(message.getBody());
+        BufferedReader br = new BufferedReader(new InputStreamReader(is));
 
-        // ASSUMING THIS IS THE ONLY TYPE OF MESSAGE RECEIVED THROUGH UDP
-
-        ByteBuffer bb = ByteBuffer.wrap(message.getBody());
-        int membershipCounter = bb.getInt();
-        System.out.println("GOT body: " + membershipCounter);
-
+        String nodeId;
+        int tcpPort, membershipCounter;
+        try {
+            nodeId = br.readLine();
+            tcpPort = Integer.parseInt(br.readLine());
+            membershipCounter = Integer.parseInt(br.readLine());
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+        System.out.println(String.format("Received message from: %s (port %d). Membership Counter: %d", nodeId, tcpPort, membershipCounter));
 
         // Updates view of the cluster membership and adds the log
-        this.membershipService.getNodeMap().put(Utils.generateKey(message.getNodeId()), new Node(message.getNodeId(), message.getPort()));
-        this.membershipService.addLog(message.getNodeId(), membershipCounter);
+        this.membershipService.getNodeMap().put(Utils.generateKey(nodeId), new Node(nodeId, tcpPort));
+        this.membershipService.addLog(nodeId, membershipCounter);
 
         final int randomWait = new Random().nextInt(10);
         try {
             Thread.sleep(randomWait * 1000);
 
             Collection<Node> nodesList = this.membershipService.getNodeMap().values();
+
+            // TODO: Change this body
             ByteBuffer body = ByteBuffer.allocate(4);
             body.putInt(1);
-            Message msg = new Message("reply", "join", this.membershipService.getNodeId(), this.membershipService.getTcpPort(), body.array());
+            Message msg = new Message("reply", "join", body.array());
 
         } catch (InterruptedException e) {
             e.printStackTrace();

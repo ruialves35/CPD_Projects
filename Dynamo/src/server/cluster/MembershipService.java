@@ -5,6 +5,7 @@ import common.Sender;
 import common.Utils;
 import java.io.*;
 import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.StandardOpenOption;
 import java.util.*;
@@ -54,10 +55,22 @@ public class MembershipService implements ClusterMembership {
         return nodeMap;
     }
 
+    /**
+     * Body has nodeId, tcp port and membership Counter
+     */
     private void multicastJoin() {
-        ByteBuffer body = ByteBuffer.allocate(4);
-        body.putInt(this.membershipCounter);
-        Message msg = new Message("request", "join", this.nodeId, this.tcpPort, body.array());
+        StringBuilder sb = new StringBuilder();
+        sb.append(this.nodeId).append("\r\n");
+        sb.append(this.tcpPort).append("\r\n");
+        sb.append(this.membershipCounter).append("\r\n");
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        try {
+            out.write(sb.toString().getBytes(StandardCharsets.UTF_8));
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+
+        Message msg = new Message("request", "join", out.toByteArray());
         Sender.sendMulticast(msg.toBytes(), this.multicastIpAddr, this.multicastIPPort);
     }
 
