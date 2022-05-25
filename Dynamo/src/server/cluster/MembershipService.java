@@ -35,9 +35,7 @@ public class MembershipService implements ClusterMembership {
 
     @Override
     public boolean join() {
-        Node newNode = new Node(this.nodeId, this.tcpPort);
-        String key = Utils.generateKey(this.nodeId);
-        nodeMap.put(key, newNode);
+        this.addNodeToMap(this.nodeId, this.tcpPort);
 
         if (this.isRootNode) return true;
 
@@ -84,6 +82,17 @@ public class MembershipService implements ClusterMembership {
     public String getNodeId() {return nodeId;}
 
     public int getTcpPort() {return tcpPort;}
+
+    /**
+     * Adds a new node to the nodeMap
+     * @param newNodeId
+     * @param newNodePort
+     */
+    public void addNodeToMap(String newNodeId, int newNodePort) {
+        Node newNode = new Node(newNodeId, newNodePort);
+        String key = Utils.generateKey(newNodeId);
+        this.nodeMap.put(key, newNode);
+    }
 
     private void createNodeFolder() {
         File folder = new File(this.folderPath);

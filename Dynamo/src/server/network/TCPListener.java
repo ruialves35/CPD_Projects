@@ -89,29 +89,34 @@ public class TCPListener implements Runnable {
                 BufferedReader br = new BufferedReader(new InputStreamReader(is));
 
                 String line;
-                ArrayList<String> membershipLogs = new ArrayList<>();
-                int bodyOffset = 2; // Last new line offset
+                final ArrayList<String> membershipLogs = new ArrayList<>();
                 try {
                     while ((line = br.readLine()) != null) {
                         if (line.isEmpty())
                             break;  // Reached the end of membership log
-                        System.out.println("Found line: " + line);
                         membershipLogs.add(line);
                     }
 
                     while ((line = br.readLine()) != null) {
-                        System.out.println("Found line2: " + line);
+                        String[] data = line.split(" ");
+                        String newNodeId = data[0];
+                        int newNodePort = Integer.parseInt(data[1]);
+                        this.membershipService.addNodeToMap(newNodeId, newNodePort);    // Check what happens when adding node that already exists
                     }
-
-                    System.out.println("membershipLogs Received:" + membershipLogs.get(0));
                 } catch (IOException e) {
                     throw new RuntimeException(e);
                 }
 
+                for (String newLog : membershipLogs) {
+                    String[] logData = newLog.split(" ");
+                    String logId = logData[0];
+                    int logCounter = Integer.parseInt(logData[1]);
+                    this.membershipService.addLog(logId, logCounter);
+                }
 
+                System.out.println("Received membership Logs: " + membershipLogs + "\nnodeMap: " + this.membershipService.getNodeMap());
 
                 reply = new Message("REP", "ok", "".getBytes(StandardCharsets.UTF_8));
-                return;
             }
             case "get" -> reply = storageService.get(new String(message.getBody()));
             case "put" -> {
