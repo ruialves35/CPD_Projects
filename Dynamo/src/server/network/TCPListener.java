@@ -120,7 +120,7 @@ public class TCPListener implements Runnable {
             }
             case "delete" -> reply = storageService.delete(new String(message.getBody()));
             default -> {
-                System.out.println("Invalid event received!");
+                System.out.println("Invalid event received! - " + message.getAction());
                 return;
             }
         }
