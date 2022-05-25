@@ -1,8 +1,8 @@
 package server.cluster;
 
-import common.Utils;
 import common.Message;
 import common.Sender;
+import common.Utils;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;

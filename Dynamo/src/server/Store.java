@@ -1,7 +1,6 @@
 package server;
 
 import server.cluster.MembershipService;
-import server.cluster.Node;
 import server.network.TCPListener;
 import server.network.UDPListener;
 import server.storage.StorageService;

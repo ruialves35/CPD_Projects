@@ -1,8 +1,8 @@
 package server.storage;
 
+import common.Message;
 import common.Utils;
 import server.cluster.Node;
-import common.Message;
 
 import java.io.File;
 import java.io.FileInputStream;
