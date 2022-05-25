@@ -3,6 +3,7 @@ package server.network;
 import common.Message;
 import common.Utils;
 import server.cluster.MembershipService;
+import server.cluster.Node;
 import server.storage.StorageService;
 import server.storage.TransferService;
 
@@ -12,7 +13,7 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
-import java.util.Random;
+import java.util.TreeMap;
 import java.util.concurrent.ExecutorService;
 
 public class TCPListener implements Runnable {
@@ -92,11 +93,14 @@ public class TCPListener implements Runnable {
                 int bodyOffset = 2; // Last new line offset
                 try {
                     while ((line = br.readLine()) != null) {
-                        if (line.equals(Utils.newLine))
+                        if (line.isEmpty())
                             break;  // Reached the end of membership log
                         System.out.println("Found line: " + line);
                         membershipLogs.add(line);
-                        bodyOffset += line.length();
+                    }
+
+                    while ((line = br.readLine()) != null) {
+                        System.out.println("Found line2: " + line);
                     }
 
                     System.out.println("membershipLogs Received:" + membershipLogs.get(0));
@@ -105,7 +109,7 @@ public class TCPListener implements Runnable {
                 }
 
 
-                
+
                 reply = new Message("REP", "ok", "".getBytes(StandardCharsets.UTF_8));
                 return;
             }

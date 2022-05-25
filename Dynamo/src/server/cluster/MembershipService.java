@@ -170,9 +170,6 @@ public class MembershipService implements ClusterMembership {
     public byte[] buildMembershipMsgBody() {
         ByteArrayOutputStream byteOut = new ByteArrayOutputStream();
         try {
-            ByteArrayOutputStream byteOut2 = new ByteArrayOutputStream();
-            ObjectOutputStream objectOut = new ObjectOutputStream(byteOut2);
-
             File file = new File(this.folderPath + Utils.membershipLogFileName);
             Scanner myReader = new Scanner(file);
             for (int i = 0; i < Utils.numLogEvents; i++) {
@@ -186,9 +183,11 @@ public class MembershipService implements ClusterMembership {
 
             byteOut.write(Utils.newLine.getBytes(StandardCharsets.UTF_8));
 
-            // Convert nodeMap to bytes
-            objectOut.writeObject(this.getNodeMap());
-            byteOut.writeBytes(byteOut2.toByteArray());
+            for (Node node : this.getNodeMap().values()) {
+                System.out.println("Node: " + node);
+                String entryLine = node.getId() + " " + node.getPort() + "\n";
+                byteOut.write(entryLine.getBytes(StandardCharsets.UTF_8));
+            }
         } catch (IOException e) {
             e.printStackTrace();
         }
