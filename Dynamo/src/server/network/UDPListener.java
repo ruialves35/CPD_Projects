@@ -82,7 +82,7 @@ public class UDPListener implements Runnable {
         this.membershipService.getNodeMap().put(Utils.generateKey(nodeId), new Node(nodeId, tcpPort));
         this.membershipService.addLog(nodeId, membershipCounter);
 
-        final int randomWait = new Random().nextInt(10);
+        final int randomWait = new Random().nextInt(Utils.maxResponseTime);
         try {
             Thread.sleep(randomWait * 1000);
 

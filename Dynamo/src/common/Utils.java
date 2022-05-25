@@ -11,6 +11,8 @@ public class Utils {
     public static final int numLogEvents = 32;
     public static final String newLine = "\r\n";
 
+    public static final int maxResponseTime = 10;
+
     public static String generateKey(final String hashable) {
         return generateKey(hashable.getBytes(StandardCharsets.UTF_8));
     }

@@ -89,9 +89,11 @@ public class MembershipService implements ClusterMembership {
      * @param newNodePort
      */
     public void addNodeToMap(String newNodeId, int newNodePort) {
-        Node newNode = new Node(newNodeId, newNodePort);
         String key = Utils.generateKey(newNodeId);
-        this.nodeMap.put(key, newNode);
+        if (!this.nodeMap.containsKey(key)) {
+            Node newNode = new Node(newNodeId, newNodePort);
+            this.nodeMap.put(key, newNode);
+        }
     }
 
     private void createNodeFolder() {
@@ -146,28 +148,37 @@ public class MembershipService implements ClusterMembership {
     public void addLog(String nodeId, int membershipCounter) {
         try {
             File file = new File(this.folderPath + Utils.membershipLogFileName);
+            boolean isDeprecatedLog = false;
 
-            List<String> filteredFile = new ArrayList<>();
-            filteredFile.add(String.format("%s %d", nodeId, membershipCounter));
-            filteredFile.addAll(
-                Files.lines(file.toPath()).filter(line -> {
-                    Optional<String> optId = Arrays.stream(line.split(" ")).findFirst();
-                    String rowId = optId.orElse("");
-                    return !nodeId.equals(rowId);
-                }).collect(Collectors.toList()));
+            FileReader fr = new FileReader(file);   //reads the file
+            BufferedReader br = new BufferedReader(fr);
+            String line;
 
-            Files.write(file.toPath(), filteredFile, StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING);
-
-            /*
-            Scanner myReader = new Scanner(myObj);
-
-            while (myReader.hasNextLine()) {
-                Optional<String> optId = Arrays.stream(myReader.nextLine().split(" ")).findFirst();
-                String rowId = optId.orElse("");
-                if (nodeId.equals(rowId)) {
-
+            // Check if there is a more recent log for this node
+            while ((line = br.readLine()) != null) {
+                String[] lineData = line.split(" ");
+                String lineId = lineData[0];
+                if (nodeId.equals(lineId)) {
+                    int lineCounter = Integer.parseInt(lineData[1]);
+                    if (lineCounter >= membershipCounter)
+                        isDeprecatedLog = true;
+                    break;
                 }
-            } */
+            }
+
+            if (!isDeprecatedLog) {
+                List<String> filteredFile = new ArrayList<>();
+
+                filteredFile.add(String.format("%s %d", nodeId, membershipCounter));
+                filteredFile.addAll(
+                        Files.lines(file.toPath()).filter(streamLine -> {
+                            Optional<String> optId = Arrays.stream(streamLine.split(" ")).findFirst();
+                            String rowId = optId.orElse("");
+                            return !nodeId.equals(rowId);
+                        }).toList());
+
+                Files.write(file.toPath(), filteredFile, StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING);
+            }
         } catch (FileNotFoundException e) {
             System.out.println("An error occurred.");
             e.printStackTrace();
