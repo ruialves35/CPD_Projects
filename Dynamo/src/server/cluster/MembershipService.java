@@ -180,6 +180,7 @@ public class MembershipService implements ClusterMembership {
                 String line = myReader.nextLine();
                 System.out.println("Writing line: " + line);
                 objectOut.write(line.getBytes(StandardCharsets.UTF_8));
+                objectOut.write(Utils.newLine.getBytes(StandardCharsets.UTF_8));
             }
             myReader.close();
 

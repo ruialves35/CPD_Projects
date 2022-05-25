@@ -1,6 +1,7 @@
 package server.network;
 
 import common.Message;
+import common.Utils;
 import server.cluster.MembershipService;
 import server.storage.StorageService;
 import server.storage.TransferService;
@@ -10,6 +11,7 @@ import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.Random;
 import java.util.concurrent.ExecutorService;
 
@@ -82,6 +84,28 @@ public class TCPListener implements Runnable {
             case "join" -> {
                 // TODO: PARSE MEMBERSHIP MESSAGE (UPDATE LOG AND NODE MAP)
                 System.out.println("Received tcp reply to join");
+                InputStream is = new ByteArrayInputStream(message.getBody());
+                BufferedReader br = new BufferedReader(new InputStreamReader(is));
+
+                String line;
+                ArrayList<String> membershipLogs = new ArrayList<>();
+                int bodyOffset = 2; // Last new line offset
+                try {
+                    while ((line = br.readLine()) != null) {
+                        if (line.equals(Utils.newLine))
+                            break;  // Reached the end of membership log
+                        System.out.println("Found line: " + line);
+                        membershipLogs.add(line);
+                        bodyOffset += line.length();
+                    }
+
+                    System.out.println("membershipLogs Received:" + membershipLogs.get(0));
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
+
+
+                
                 reply = new Message("REP", "ok", "".getBytes(StandardCharsets.UTF_8));
                 return;
             }
