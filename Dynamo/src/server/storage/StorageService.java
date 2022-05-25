@@ -101,12 +101,6 @@ public class StorageService implements KeyValue {
             System.out.println("Error creating the node's folder: " + folderPath);
         }
 
-        try {
-            File file = new File(folderPath + "test");
-            file.createNewFile();
-        } catch (Exception err) {
-            System.out.println("ERROR");
-        }
         return folderPath;
     }
 }

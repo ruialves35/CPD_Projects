@@ -32,8 +32,6 @@ public class MembershipService implements ClusterMembership {
         Node newNode = new Node(multicastIpAddr, multicastIPPort);
         String key = Utils.generateKey(nodeId);
         nodeMap.put(key, newNode);
-        nodeMap.put("a6864eb339b0e1f6e00d75293a8840abf069a2c0fe82e6e53af6ac099793c1d5", newNode);
-        System.out.println("Map " + nodeMap);
 
         return true;
     }

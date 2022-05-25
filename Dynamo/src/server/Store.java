@@ -39,9 +39,7 @@ public class Store {
             executorService.submit(new UDPListener(storageService, membershipService, transferService, executorService));
         }
 
-
         transferService.leave(new Node(nodeId, storePort));
-
 
         // TODO Adapt this to the client
         /*
