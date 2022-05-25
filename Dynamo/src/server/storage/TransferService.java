@@ -8,8 +8,7 @@ import server.cluster.Node;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
-import java.util.Map;
-import java.util.TreeMap;
+import java.util.*;
 
 public class TransferService {
     private final TreeMap<String, Node> nodeMap;
@@ -24,23 +23,17 @@ public class TransferService {
         String nextKey = Utils.generateKey(nextNode.getId());
         File[] nodeFiles = this.getNodeFiles(nextKey);
 
-        System.out.println("Node: " + node);
-        System.out.println("Node key: " + key);
-        System.out.println("Next node: " + nextNode.getId());
-        System.out.println("Next key: " + nextKey);
         if (sendFiles(nodeFiles, node, nextNode, true)) {
-            System.out.println("Sent nodes to joined node successfully");
+            System.out.println("Sent files to joined node successfully");
         } else {
             System.out.println("Error sending files to joined node");
+            return false;
         }
 
         return true;
     }
 
     public void leave(Node node) {
-        // TODO When a node leaves, it must put the files on next node
-        // TODO Change this to get the key from the node received by argument (it's just for tests)
-
         String key = Utils.generateKey(node.getId());
         File[] nodeFiles = this.getNodeFiles(key);
 
@@ -62,7 +55,14 @@ public class TransferService {
      */
     public Message createMsgFromFile(File file) {
         try (FileInputStream fis = new FileInputStream(file.getPath())) {
-            byte[] value = fis.readAllBytes();
+
+            String name = file.getName() + "\r\n";
+            byte[] fileName = name.getBytes();
+            byte[] fileBody = fis.readAllBytes();
+
+            byte[] value = Arrays.copyOf(fileName, fileName.length + fileBody.length);
+            System.arraycopy(fileBody, 0, value, fileName.length, fileBody.length);
+
             return new Message("req", "saveFile", value);
         } catch (IOException e) {
             System.out.println("Error opening file in get operation: " + file.getPath());
@@ -85,26 +85,17 @@ public class TransferService {
         if (nodeFiles != null) {
             for (final File file : nodeFiles) {
                 String fileName = file.getName();
-                String fileHash = Utils.generateKey(fileName);
                 String key = Utils.generateKey(node.getId());
-                int compare = fileHash.compareTo(key);
-                boolean compareCondition = isJoin ? compare < 0 : true;
 
-                if (compareCondition) {
-                    Message msg = createMsgFromFile(file);
-                    try {
-                        if (isJoin) {
-                            System.out.println("Join Message:" + msg.getAction());
-                            msg.toBytes();
-                            //Sender.sendTCPMessage(msg.toBytes(), node.getId(), node.getPort());
-                        } else {
-                            System.out.println("Leave Message:" + msg.toString());
-                            //Sender.sendTCPMessage(msg.toBytes(), nextNode.getId(), nextNode.getPort());
-                        }
-                    } catch (IOException e) {
-                        System.out.println("Error creating message from file: " + fileName);
-                        return false;
+                Message msg = createMsgFromFile(file);
+                try {
+                    if (isJoin && fileName.compareTo(key) < 0) {
+                        Sender.sendTCPMessage(msg.toBytes(), node.getId(), node.getPort());
+                    } else if (!isJoin) {
+                        Sender.sendTCPMessage(msg.toBytes(), nextNode.getId(), nextNode.getPort());
                     }
+                } catch (IOException e) {
+                    return false;
                 }
             }
         }
@@ -139,8 +130,7 @@ public class TransferService {
         // if it's leave we want to get the files of the current node
         String folderPath = "database/" + key + "/";
         File folder = new File(folderPath);
-        File[] nodeFiles = folder.listFiles();
-        return nodeFiles;
+        return folder.listFiles();
     }
 
 }

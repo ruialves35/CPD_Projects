@@ -23,6 +23,10 @@ public class StorageService implements KeyValue {
         this.dbFolder = Utils.generateFolderPath(ownID);
     }
 
+    public String getDbFolder() {
+        return dbFolder;
+    }
+
     @Override
     public Message put(String key, byte[] value) {
         Node node = getResponsibleNode(key);
