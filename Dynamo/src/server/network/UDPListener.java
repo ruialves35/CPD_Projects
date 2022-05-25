@@ -25,7 +25,9 @@ public class UDPListener implements Runnable {
     public void run() {
         try {
             MulticastSocket socket = new MulticastSocket(this.membershipService.getMulticastIPPort());
-            InetSocketAddress group = new InetSocketAddress(this.membershipService.getMulticastIpAddr(), this.membershipService.getMulticastIPPort());
+            InetSocketAddress group = new InetSocketAddress(
+                    this.membershipService.getMulticastIpAddr(),
+                    this.membershipService.getMulticastIPPort());
             NetworkInterface netInf = NetworkInterface.getByIndex(0);
             socket.joinGroup(group, netInf);
 
