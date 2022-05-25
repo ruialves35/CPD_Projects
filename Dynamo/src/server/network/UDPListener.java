@@ -20,8 +20,9 @@ public class UDPListener implements Runnable {
     private final TransferService transferService;
     private final ExecutorService executorService;
 
-    public UDPListener(StorageService storageService, MembershipService membershipService, TransferService transferService,
-                       ExecutorService executorService) {
+    public UDPListener(StorageService storageService, MembershipService membershipService,
+            TransferService transferService,
+            ExecutorService executorService) {
         this.storageService = storageService;
         this.membershipService = membershipService;
         this.transferService = transferService;
@@ -49,7 +50,8 @@ public class UDPListener implements Runnable {
                         processEvent(message);
                     });
 
-                    if (message.getAction().equals("leave")) break;
+                    if (message.getAction().equals("leave"))
+                        break;
                 } catch (IOException e) {
                     System.err.println(e.getMessage());
                 }
@@ -76,7 +78,8 @@ public class UDPListener implements Runnable {
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
-        System.out.printf("Received message from: %s (port %d). Membership Counter: %d%n", nodeId, tcpPort, membershipCounter);
+        System.out.printf("Received message from: %s (port %d). Membership Counter: %d%n", nodeId, tcpPort,
+                membershipCounter);
 
         switch (message.getAction()) {
             case "join" -> {

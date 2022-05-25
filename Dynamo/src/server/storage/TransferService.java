@@ -1,9 +1,13 @@
 package server.storage;
 
+import common.Message;
+import common.Sender;
 import common.Utils;
 import server.cluster.Node;
 
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
 import java.util.Map;
 import java.util.TreeMap;
 
@@ -15,22 +19,19 @@ public class TransferService {
     }
 
     public boolean join(Node node) {
-        // TODO Must transfer the files that are of the new node
-        //   from the next node to it, since they were stored over there atm
-
         String key = Utils.generateKey(node.getId());
         Node nextNode = this.getNextNode(key);
         String nextKey = Utils.generateKey(nextNode.getId());
         File[] nodeFiles = this.getNodeFiles(nextKey);
 
-        if (nodeFiles != null) {
-            for (final File fileEntry : nodeFiles) {
-                String fileName = fileEntry.getName();
-                String fileHash = Utils.generateKey(fileName);
-                if (fileHash.compareTo(Utils.generateKey(node.getId())) < 0)
-                    // TODO Send the file with put(?) to Node
-                    System.out.println("Name: " + fileName + " hash: " + fileHash);
-            }
+        System.out.println("Node: " + node);
+        System.out.println("Node key: " + key);
+        System.out.println("Next node: " + nextNode.getId());
+        System.out.println("Next key: " + nextKey);
+        if (sendFiles(nodeFiles, node, nextNode, true)) {
+            System.out.println("Sent nodes to joined node successfully");
+        } else {
+            System.out.println("Error sending files to joined node");
         }
 
         return true;
@@ -44,18 +45,70 @@ public class TransferService {
         File[] nodeFiles = this.getNodeFiles(key);
 
         Node nextNode = this.getNextNode(key);
-        String nextNodeKey = Utils.generateKey(nextNode.getId());
 
+        if (sendFiles(nodeFiles, node, nextNode, false)) {
+            System.out.println("Sent nodes from the leaving node successfully");
+        } else {
+            System.out.println("Error sending files from leaving node to next node");
+        }
+    }
+
+
+    /**
+     * Creates a Message request to save a file
+     * @param file file to be saved
+     * @return if everything went well Message with saveFile actio,
+     *         otherwise Message with error action
+     */
+    public Message createMsgFromFile(File file) {
+        try (FileInputStream fis = new FileInputStream(file.getPath())) {
+            byte[] value = fis.readAllBytes();
+            return new Message("req", "saveFile", value);
+        } catch (IOException e) {
+            System.out.println("Error opening file in get operation: " + file.getPath());
+            return new Message("REP", "error", null);
+        }
+    }
+
+
+    /**
+     * Sends all the files in a node Database by sending a TCP message.
+     * If isJoin, then sends files from nextNode to Node
+     * otherwise, sends files from node to nextNode
+     * @param nodeFiles files from the node
+     * @param node node that's joining or leaving
+     * @param nextNode nextNode to node in the membership
+     * @param isJoin is join action
+     * @return true if no errors occur, false otherwise
+     */
+    public boolean sendFiles(File[] nodeFiles, Node node, Node nextNode, boolean isJoin) {
         if (nodeFiles != null) {
-            for (final File fileEntry : nodeFiles) {
-                String fileName = fileEntry.getName();
+            for (final File file : nodeFiles) {
+                String fileName = file.getName();
                 String fileHash = Utils.generateKey(fileName);
-                if (fileHash.compareTo(Utils.generateKey(node.getId())) > 0)
-                    // TODO should i read the file with get and then send with put(?) to NextNode
-                    System.out.println("Name: " + fileName + " hash: " + fileHash);
+                String key = Utils.generateKey(node.getId());
+                int compare = fileHash.compareTo(key);
+                boolean compareCondition = isJoin ? compare < 0 : true;
+
+                if (compareCondition) {
+                    Message msg = createMsgFromFile(file);
+                    try {
+                        if (isJoin) {
+                            System.out.println("Join Message:" + msg.getAction());
+                            msg.toBytes();
+                            //Sender.sendTCPMessage(msg.toBytes(), node.getId(), node.getPort());
+                        } else {
+                            System.out.println("Leave Message:" + msg.toString());
+                            //Sender.sendTCPMessage(msg.toBytes(), nextNode.getId(), nextNode.getPort());
+                        }
+                    } catch (IOException e) {
+                        System.out.println("Error creating message from file: " + fileName);
+                        return false;
+                    }
+                }
             }
         }
-
+        return true;
     }
 
     /**
@@ -74,6 +127,12 @@ public class TransferService {
         return nextNode;
     }
 
+
+    /**
+     * gets the Files in Node's database
+     * @param key key of the node
+     * @return array with Files stores in Node's database
+     */
     public File[] getNodeFiles(String key) {
 
         // if it's join then we want to get the files of the next node
