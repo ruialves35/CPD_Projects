@@ -169,9 +169,9 @@ public class MembershipService implements ClusterMembership {
 
     public byte[] buildMembershipMsgBody() {
         ByteArrayOutputStream byteOut = new ByteArrayOutputStream();
-        ObjectOutputStream objectOut = null;
         try {
-            objectOut = new ObjectOutputStream(byteOut);
+            ByteArrayOutputStream byteOut2 = new ByteArrayOutputStream();
+            ObjectOutputStream objectOut = new ObjectOutputStream(byteOut2);
 
             File file = new File(this.folderPath + Utils.membershipLogFileName);
             Scanner myReader = new Scanner(file);
@@ -179,15 +179,16 @@ public class MembershipService implements ClusterMembership {
                 if (!myReader.hasNextLine()) break;
                 String line = myReader.nextLine();
                 System.out.println("Writing line: " + line);
-                objectOut.write(line.getBytes(StandardCharsets.UTF_8));
-                objectOut.write(Utils.newLine.getBytes(StandardCharsets.UTF_8));
+                byteOut.write(line.getBytes(StandardCharsets.UTF_8));
+                byteOut.write(Utils.newLine.getBytes(StandardCharsets.UTF_8));
             }
             myReader.close();
 
-            objectOut.write(Utils.newLine.getBytes(StandardCharsets.UTF_8));
+            byteOut.write(Utils.newLine.getBytes(StandardCharsets.UTF_8));
 
             // Convert nodeMap to bytes
             objectOut.writeObject(this.getNodeMap());
+            byteOut.writeBytes(byteOut2.toByteArray());
         } catch (IOException e) {
             e.printStackTrace();
         }

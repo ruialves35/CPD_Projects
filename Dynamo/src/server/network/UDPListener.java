@@ -88,6 +88,21 @@ public class UDPListener implements Runnable {
 
             final byte[] body = this.membershipService.buildMembershipMsgBody();
             Message msg = new Message("reply", "join", body);
+
+            InputStream is2 = new ByteArrayInputStream(body);
+            BufferedReader br2 = new BufferedReader(new InputStreamReader(is2));
+            String line = "";
+            while (true) {
+                try {
+                    if ((line = br2.readLine()) == null) break;
+                    if (line.equals(Utils.newLine))
+                        break;  // Reached the end of membership log
+                    System.out.println("Found line: " + line);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+
             Sender.sendTCPMessage(msg.toBytes(), nodeId, tcpPort);
         } catch (InterruptedException e) {
             e.printStackTrace();
