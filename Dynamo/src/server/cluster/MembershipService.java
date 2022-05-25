@@ -4,7 +4,6 @@ import common.Message;
 import common.Sender;
 import common.Utils;
 import java.io.*;
-import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.StandardOpenOption;
@@ -60,9 +59,9 @@ public class MembershipService implements ClusterMembership {
      */
     private void multicastJoin() {
         StringBuilder sb = new StringBuilder();
-        sb.append(this.nodeId).append("\r\n");
-        sb.append(this.tcpPort).append("\r\n");
-        sb.append(this.membershipCounter).append("\r\n");
+        sb.append(this.nodeId).append(Utils.newLine);
+        sb.append(this.tcpPort).append(Utils.newLine);
+        sb.append(this.membershipCounter).append(Utils.newLine);
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         try {
             out.write(sb.toString().getBytes(StandardCharsets.UTF_8));
@@ -137,7 +136,7 @@ public class MembershipService implements ClusterMembership {
      */
     public void addLog(String nodeId, int membershipCounter) {
         try {
-            File file = new File(this.folderPath + "membership.log");
+            File file = new File(this.folderPath + Utils.membershipLogFileName);
 
             List<String> filteredFile = new ArrayList<>();
             filteredFile.add(String.format("%s %d", nodeId, membershipCounter));
@@ -166,6 +165,33 @@ public class MembershipService implements ClusterMembership {
         } catch (IOException e) {
             e.printStackTrace();
         }
+    }
+
+    public byte[] buildMembershipMsgBody() {
+        ByteArrayOutputStream byteOut = new ByteArrayOutputStream();
+        ObjectOutputStream objectOut = null;
+        try {
+            objectOut = new ObjectOutputStream(byteOut);
+
+            File file = new File(this.folderPath + Utils.membershipLogFileName);
+            Scanner myReader = new Scanner(file);
+            for (int i = 0; i < Utils.numLogEvents; i++) {
+                if (!myReader.hasNextLine()) break;
+                String line = myReader.nextLine();
+                System.out.println("Writing line: " + line);
+                objectOut.write(line.getBytes(StandardCharsets.UTF_8));
+            }
+            myReader.close();
+
+            objectOut.write(Utils.newLine.getBytes(StandardCharsets.UTF_8));
+
+            // Convert nodeMap to bytes
+            objectOut.writeObject(this.getNodeMap());
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        return byteOut.toByteArray();
     }
 }
 

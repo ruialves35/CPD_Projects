@@ -81,6 +81,7 @@ public class TCPListener implements Runnable {
         switch (message.getAction()) {
             case "join" -> {
                 // TODO: PARSE MEMBERSHIP MESSAGE (UPDATE LOG AND NODE MAP)
+                System.out.println("Received tcp reply to join");
                 reply = new Message("REP", "ok", "".getBytes(StandardCharsets.UTF_8));
                 return;
             }

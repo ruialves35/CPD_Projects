@@ -1,13 +1,8 @@
 package server.cluster;
 
-public class Node {
-    private final String id;
-    private final int port;
+import java.io.Serializable;
 
-    public Node(String id, int port) {
-        this.id = id;
-        this.port = port;
-    }
+public record Node(String id, int port) implements Serializable {
 
     public String getId() {
         return id;

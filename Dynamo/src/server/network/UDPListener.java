@@ -86,13 +86,9 @@ public class UDPListener implements Runnable {
         try {
             Thread.sleep(randomWait * 1000);
 
-            Collection<Node> nodesList = this.membershipService.getNodeMap().values();
-
-            // TODO: Change this body
-            ByteBuffer body = ByteBuffer.allocate(4);
-            body.putInt(1);
-            Message msg = new Message("reply", "join", body.array());
-
+            final byte[] body = this.membershipService.buildMembershipMsgBody();
+            Message msg = new Message("reply", "join", body);
+            Sender.sendTCPMessage(msg.toBytes(), nodeId, tcpPort);
         } catch (InterruptedException e) {
             e.printStackTrace();
         }

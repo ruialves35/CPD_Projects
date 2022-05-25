@@ -1,5 +1,7 @@
 package common;
 
+import server.Utils;
+
 import java.io.*;
 import java.nio.charset.StandardCharsets;
 
@@ -48,11 +50,11 @@ public class Message {
     public byte[] toBytes() throws IOException {
         StringBuilder sb = new StringBuilder();
 
-        sb.append(type).append("\r\n");
-        sb.append(action).append("\r\n");
+        sb.append(type).append(Utils.newLine);
+        sb.append(action).append(Utils.newLine);
 
         // empty line
-        sb.append("\r\n");
+        sb.append(Utils.newLine);
 
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         out.write(sb.toString().getBytes(StandardCharsets.UTF_8));
