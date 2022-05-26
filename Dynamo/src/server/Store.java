@@ -1,7 +1,6 @@
 package server;
 
 import server.cluster.MembershipService;
-import server.cluster.Node;
 import server.network.TCPListener;
 import server.network.UDPListener;
 import server.storage.StorageService;
@@ -39,28 +38,6 @@ public class Store {
             executorService.submit(new UDPListener(storageService, membershipService, transferService, executorService));
         }
 
-        transferService.leave(new Node(nodeId, storePort));
-
-        // TODO Adapt this to the client
-        /*
-        Path path = Paths.get("./Utils.java");
-        byte[] data = Files.readAllBytes(path);
-        String key = storageService.put(data);
-        System.out.println("Key = " + key);
-
-        byte[] data = storageService.get("df1847064eaf9321457a8090bbac85c084925f30ba9ac3f2f631960569d7f37f");
-        try (FileOutputStream fos = new FileOutputStream("file")) {
-            fos.write(data);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-
-        storageService.delete("df1847064eaf9321457a8090bbac85c084925f30ba9ac3f2f631960569d7f37f");
-        */
+        membershipService.join();
     }
 }
-
-/*
-* This is where a Service node is invoked. This class will act as a node in the server. Next steps is to find how multicast works
-* and try to send a message to other service nodes?
-* */

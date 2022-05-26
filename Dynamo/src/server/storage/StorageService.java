@@ -1,12 +1,14 @@
 package server.storage;
 
-import server.Utils;
+import common.Message;
+import common.Utils;
 import server.cluster.Node;
 
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import java.util.TreeMap;
 
@@ -22,34 +24,27 @@ public class StorageService implements KeyValue {
     }
 
     @Override
-    public String put(byte[] value) {
-        String key = Utils.generateKey(value);
-
+    public Message put(String key, byte[] value) {
         Node node = getResponsibleNode(key);
-        if (!node.getId().equals(ownID)) {
-            // TODO Request put to the node
-            return null;
-        }
+        if (!node.getId().equals(ownID))
+            return buildRedirectMessage(node);
 
         String filePath = dbFolder + key;
         try (FileOutputStream fos = new FileOutputStream(filePath)) {
             fos.write(value);
         } catch (IOException e) {
             System.out.println("Error opening file in put operation: " + filePath);
-            e.printStackTrace();
-            return null;
+            return new Message("REP", "error", null);
         }
 
-        return key;
+        return new Message("REP", "ok", null);
     }
 
     @Override
-    public byte[] get(String key) {
+    public Message get(String key) {
         Node node = getResponsibleNode(key);
-        if (!node.getId().equals(ownID)) {
-            // TODO Request get to the node
-            return null;
-        }
+        if (!node.getId().equals(ownID))
+            return buildRedirectMessage(node);
 
         String filePath = dbFolder + key;
         byte[] value;
@@ -58,26 +53,26 @@ public class StorageService implements KeyValue {
             value = fis.readAllBytes();
         } catch (IOException e) {
             System.out.println("Error opening file in get operation: " + filePath);
-            e.printStackTrace();
-            return null;
+            return new Message("REP", "error", null);
         }
 
-        return value;
+        return new Message("REP", "ok", value);
     }
 
     @Override
-    public void delete(String key) {
+    public Message delete(String key) {
         Node node = getResponsibleNode(key);
-        if (!node.getId().equals(ownID)) {
-            // TODO Request delete to the node
-            return;
-        }
+        if (!node.getId().equals(ownID))
+            return buildRedirectMessage(node);
 
         String filePath = dbFolder + key;
         File file = new File(filePath);
         if (!file.delete()) {
             System.out.println("Error deleting the file: " + filePath);
+            return new Message("REP", "error", null);
         }
+
+        return new Message("REP", "ok", null);
     }
 
     /**
@@ -102,5 +97,10 @@ public class StorageService implements KeyValue {
         }
 
         return folderPath;
+    }
+
+    private Message buildRedirectMessage(Node newNode) {
+        String redirectInfo = newNode.getId() + "\r\n" + newNode.getPort();
+        return new Message("REP", "redirect", redirectInfo.getBytes(StandardCharsets.UTF_8));
     }
 }

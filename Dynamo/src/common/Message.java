@@ -1,4 +1,4 @@
-package server.network;
+package common;
 
 import java.io.*;
 import java.nio.charset.StandardCharsets;
@@ -22,22 +22,18 @@ public class Message {
         this.body = body;
     }
 
-    public Message(byte[] bytes) {
+    public Message(byte[] bytes) throws IOException {
         final ByteArrayInputStream stream = new ByteArrayInputStream(bytes);
         final BufferedReader reader = new BufferedReader(new InputStreamReader(new ByteArrayInputStream(bytes)));
-        try {
-            this.type = reader.readLine();
-            this.action = reader.readLine();
-            reader.readLine(); // last empty line
+        this.type = reader.readLine();
+        this.action = reader.readLine();
+        reader.readLine(); // last empty line
 
-            int bodyOffset = type.length() + action.length() + 6; // 6 chars used for newlines
+        int bodyOffset = type.length() + action.length() + 6; // 6 chars used for newlines
 
-            //noinspection ResultOfMethodCallIgnored
-            stream.skip(bodyOffset);
-            this.body = stream.readAllBytes();
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
+        //noinspection ResultOfMethodCallIgnored
+        stream.skip(bodyOffset);
+        this.body = stream.readAllBytes();
     }
 
     /**
@@ -49,7 +45,7 @@ public class Message {
      * Body
      * @return Byte array with the message
      */
-    public byte[] toBytes() {
+    public byte[] toBytes() throws IOException {
         StringBuilder sb = new StringBuilder();
 
         sb.append(type).append("\r\n");
@@ -59,12 +55,8 @@ public class Message {
         sb.append("\r\n");
 
         ByteArrayOutputStream out = new ByteArrayOutputStream();
-        try {
-            out.write(sb.toString().getBytes(StandardCharsets.UTF_8));
-            out.write(body);
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
+        out.write(sb.toString().getBytes(StandardCharsets.UTF_8));
+        if (body != null) out.write(body);
 
         return out.toByteArray();
     }

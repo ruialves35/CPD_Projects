@@ -2,7 +2,10 @@ package server;
 
 import java.io.DataInputStream;
 import java.io.IOException;
-import java.net.*;
+import java.net.DatagramPacket;
+import java.net.DatagramSocket;
+import java.net.ServerSocket;
+import java.net.Socket;
 
 public class ExampleServer {
     public static void main(String[] args) {

@@ -1,11 +1,15 @@
 package server.network;
 
+import common.Message;
 import server.cluster.MembershipService;
 import server.storage.StorageService;
 import server.storage.TransferService;
 
 import java.io.IOException;
-import java.net.*;
+import java.net.DatagramPacket;
+import java.net.InetSocketAddress;
+import java.net.MulticastSocket;
+import java.net.NetworkInterface;
 import java.util.concurrent.ExecutorService;
 
 public class UDPListener implements Runnable {
@@ -31,7 +35,7 @@ public class UDPListener implements Runnable {
             NetworkInterface netInf = NetworkInterface.getByIndex(0);
             socket.joinGroup(group, netInf);
 
-            System.out.println("Listening UDP messages\n");
+            System.out.println("Listening UDP messages");
             while (true) {
                 byte[] msg = new byte[Message.MAX_MSG_SIZE];
                 DatagramPacket packet = new DatagramPacket(msg, msg.length);
@@ -46,7 +50,8 @@ public class UDPListener implements Runnable {
             socket.leaveGroup(group, netInf);
             socket.close();
         } catch (IOException e) {
-            e.printStackTrace();
+            System.out.println("Error opening UDP server");
+            throw new RuntimeException(e);
         }
     }
 

@@ -1,9 +1,10 @@
 package server.cluster;
 
-import server.network.Message;
-import server.Utils;
-import server.network.Sender;
+import common.Message;
+import common.Sender;
+import common.Utils;
 
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.TreeMap;
 
@@ -29,9 +30,13 @@ public class MembershipService implements ClusterMembership {
         // TODO Join protocol
         if (!this.isRootNode) this.multicastJoin();
 
-        Node newNode = new Node(multicastIpAddr, multicastIPPort);
-        String key = Utils.generateKey(nodeId);
+        Node newNode = new Node("127.0.0.1", 3000);
+        String key = Utils.generateKey("127.0.0.1");
         nodeMap.put(key, newNode);
+
+        Node newNode2 = new Node("127.0.0.2", 3000);
+        String key2 = Utils.generateKey("127.0.0.2");
+        nodeMap.put(key2, newNode2);
 
         return true;
     }
@@ -48,7 +53,11 @@ public class MembershipService implements ClusterMembership {
 
     private void multicastJoin() {
         Message msg = new Message("request", "get", "ola multicast".getBytes(StandardCharsets.UTF_8));
-        Sender.sendMulticast(msg.toBytes(), this.multicastIpAddr, this.multicastIPPort);
+        try {
+            Sender.sendMulticast(msg.toBytes(), this.multicastIpAddr, this.multicastIPPort);
+        } catch (IOException e) {
+            System.out.println("Error sending multicast join");
+        }
     }
 
     public int getMulticastIPPort() {
