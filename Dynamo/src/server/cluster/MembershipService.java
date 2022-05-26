@@ -84,7 +84,7 @@ public class MembershipService implements ClusterMembership {
     public int getTcpPort() {return tcpPort;}
 
     /**
-     * Adds a new node to the nodeMap
+     * Adds a new node to the nodeMap.
      * @param newNodeId
      * @param newNodePort
      */
@@ -94,6 +94,15 @@ public class MembershipService implements ClusterMembership {
             Node newNode = new Node(newNodeId, newNodePort);
             this.nodeMap.put(key, newNode);
         }
+    }
+
+    /***
+     * Removes a node from the map with a specific id
+     * @param oldNodeId nodeId
+     */
+    public void removeNodeFromMap(String oldNodeId) {
+        String key = Utils.generateKey(oldNodeId);
+        this.nodeMap.remove(key);
     }
 
     private void createNodeFolder() {
@@ -145,7 +154,7 @@ public class MembershipService implements ClusterMembership {
     /**
      * Adds a new log to the beginning of the membership log removing existing logs for that nodeId
      */
-    public void addLog(String nodeId, int membershipCounter) {
+    public void addLog(String newNodeId, int newMemberCounter) {
         try {
             File file = new File(this.folderPath + Utils.membershipLogFileName);
             boolean isDeprecatedLog = false;
@@ -158,9 +167,9 @@ public class MembershipService implements ClusterMembership {
             while ((line = br.readLine()) != null) {
                 String[] lineData = line.split(" ");
                 String lineId = lineData[0];
-                if (nodeId.equals(lineId)) {
+                if (newNodeId.equals(lineId)) {
                     int lineCounter = Integer.parseInt(lineData[1]);
-                    if (lineCounter >= membershipCounter)
+                    if (lineCounter >= newMemberCounter)
                         isDeprecatedLog = true;
                     break;
                 }
@@ -169,15 +178,22 @@ public class MembershipService implements ClusterMembership {
             if (!isDeprecatedLog) {
                 List<String> filteredFile = new ArrayList<>();
 
-                filteredFile.add(String.format("%s %d", nodeId, membershipCounter));
+                filteredFile.add(String.format("%s %d", newNodeId, newMemberCounter));
                 filteredFile.addAll(
                         Files.lines(file.toPath()).filter(streamLine -> {
                             Optional<String> optId = Arrays.stream(streamLine.split(" ")).findFirst();
                             String rowId = optId.orElse("");
-                            return !nodeId.equals(rowId);
+                            return !newNodeId.equals(rowId);
                         }).toList());
 
                 Files.write(file.toPath(), filteredFile, StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING);
+
+                // TODO: UPDATE NODE MAP TAKING NEW LOG INTO ACCOUNT
+                // If the newMemberCounter is even, it is already added by the nodeMap received
+                if (newMemberCounter % 2 != 0) {
+                    // Remove the node from the nodeMap
+                    this.removeNodeFromMap(newNodeId);
+                }
             }
         } catch (FileNotFoundException e) {
             System.out.println("An error occurred.");
@@ -195,7 +211,6 @@ public class MembershipService implements ClusterMembership {
             for (int i = 0; i < Utils.numLogEvents; i++) {
                 if (!myReader.hasNextLine()) break;
                 String line = myReader.nextLine();
-                System.out.println("Writing line: " + line);
                 byteOut.write(line.getBytes(StandardCharsets.UTF_8));
                 byteOut.write(Utils.newLine.getBytes(StandardCharsets.UTF_8));
             }
@@ -204,7 +219,6 @@ public class MembershipService implements ClusterMembership {
             byteOut.write(Utils.newLine.getBytes(StandardCharsets.UTF_8));
 
             for (Node node : this.getNodeMap().values()) {
-                System.out.println("Node: " + node);
                 String entryLine = node.getId() + " " + node.getPort() + "\n";
                 byteOut.write(entryLine.getBytes(StandardCharsets.UTF_8));
             }
