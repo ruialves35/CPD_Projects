@@ -21,6 +21,10 @@ public class MembershipService implements ClusterMembership {
     private final String folderPath;
     private int membershipCounter = 0;  // NEEDS TO BE STORED IN NON-VOLATILE MEMORY TO SURVIVE NODE CRASHES
     private static final int maxRetransmissions = 3;
+    private static final int numMembershipMessages = 3;
+
+    private int membershipMessageCounter = 0;
+    private int retransmissionCounter = 0;
 
     public MembershipService(String multicastIPAddr, int multicastIPPort, String nodeId, int tcpPort, boolean isRootNode) {
         nodeMap = new TreeMap<>();
@@ -68,7 +72,25 @@ public class MembershipService implements ClusterMembership {
         }
 
         Message msg = new Message("request", "join", out.toByteArray());
-        Sender.sendMulticast(msg.toBytes(), this.multicastIpAddr, this.multicastIPPort);
+
+        while (this.retransmissionCounter < maxRetransmissions) {
+            Sender.sendMulticast(msg.toBytes(), this.multicastIpAddr, this.multicastIPPort);
+            try {
+                Thread.sleep(Utils.timeoutTime);
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
+            if (this.membershipMessageCounter >= numMembershipMessages) {
+                this.membershipMessageCounter = 0;
+                this.retransmissionCounter = 0;
+                System.out.println("New Node joined the distributed store");
+                return;
+            }
+
+            this.retransmissionCounter++;
+        }
+
+        System.out.println("Prime Node joined the distributed store.");
     }
 
     public int getMulticastIPPort() {
@@ -227,6 +249,18 @@ public class MembershipService implements ClusterMembership {
         }
 
         return byteOut.toByteArray();
+    }
+
+    public int getMembershipMessageCounter() {
+        return membershipMessageCounter;
+    }
+
+    public int getRetransmissionCounter() {
+        return retransmissionCounter;
+    }
+
+    public void setMembershipMessageCounter(int membershipMessageCounter) {
+        this.membershipMessageCounter = membershipMessageCounter;
     }
 }
 

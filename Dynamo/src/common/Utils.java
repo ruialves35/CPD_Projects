@@ -11,7 +11,8 @@ public class Utils {
     public static final int numLogEvents = 32;
     public static final String newLine = "\r\n";
 
-    public static final int maxResponseTime = 10;
+    public static final int maxResponseTime = 1000;    // TODO: CHECK THIS VALUES
+    public static final int timeoutTime = 3000;
 
     public static String generateKey(final String hashable) {
         return generateKey(hashable.getBytes(StandardCharsets.UTF_8));

@@ -115,6 +115,7 @@ public class TCPListener implements Runnable {
                 }
 
                 System.out.println("Received membership Logs: " + membershipLogs + "\nnodeMap: " + this.membershipService.getNodeMap());
+                this.membershipService.setMembershipMessageCounter(this.membershipService.getMembershipMessageCounter() + 1);
 
                 reply = new Message("REP", "ok", "".getBytes(StandardCharsets.UTF_8));
             }

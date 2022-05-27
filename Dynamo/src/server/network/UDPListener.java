@@ -92,7 +92,7 @@ public class UDPListener implements Runnable {
 
         final int randomWait = new Random().nextInt(Utils.maxResponseTime);
         try {
-            Thread.sleep(randomWait * 1000);
+            Thread.sleep(randomWait);
 
             final byte[] body = this.membershipService.buildMembershipMsgBody();
             Message msg = new Message("reply", "join", body);
