@@ -10,10 +10,7 @@ import java.io.*;
 import java.net.*;
 import java.nio.Buffer;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
-import java.util.Random;
+import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.stream.Stream;
 
@@ -23,12 +20,15 @@ public class UDPListener implements Runnable {
     private final TransferService transferService;
     private final ExecutorService executorService;
 
+    private final HashSet<String> repliedNodes;
+
     public UDPListener(StorageService storageService, MembershipService membershipService, TransferService transferService,
                        ExecutorService executorService) {
         this.storageService = storageService;
         this.membershipService = membershipService;
         this.transferService = transferService;
         this.executorService = executorService;
+        this.repliedNodes = new HashSet<>();
     }
 
     public void run() {
@@ -47,7 +47,7 @@ public class UDPListener implements Runnable {
 
                 socket.receive(packet);
 
-                if (!this.processEvent(packet))
+                if (!this.processEvent(packet)) // TODO: RUN IN ANOTHER THREAD
                     break;
             }
 
@@ -76,11 +76,19 @@ public class UDPListener implements Runnable {
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
-        System.out.println(String.format("Received message from: %s (port %d). Membership Counter: %d", nodeId, tcpPort, membershipCounter));
+        System.out.printf("Received message from: %s (port %d). Membership Counter: %d%n", nodeId, tcpPort, membershipCounter);
+        if (this.repliedNodes.contains(Utils.generateKey(nodeId))) {
+            System.out.println("Received join from node that was already replied.");
+            return true;
+        }
 
         // Updates view of the cluster membership and adds the log
         this.membershipService.getNodeMap().put(Utils.generateKey(nodeId), new Node(nodeId, tcpPort));
         this.membershipService.addLog(nodeId, membershipCounter);
+
+        // Updated membership info TODO: CHECK IF THIS IS OK
+        this.repliedNodes.clear();
+        this.repliedNodes.add(Utils.generateKey(nodeId));
 
         final int randomWait = new Random().nextInt(Utils.maxResponseTime);
         try {
@@ -94,6 +102,6 @@ public class UDPListener implements Runnable {
         }
         // TODO: send membership message
 
-        return "end".equals(message);
+        return !"end".equals(message);
     }
 }
