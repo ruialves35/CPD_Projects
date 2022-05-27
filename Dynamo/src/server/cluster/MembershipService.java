@@ -17,7 +17,6 @@ public class MembershipService implements ClusterMembership {
     private final String nodeId;
 
     private final int tcpPort;
-    private final boolean isRootNode;
     private final String folderPath;
     private int membershipCounter = 0;  // NEEDS TO BE STORED IN NON-VOLATILE MEMORY TO SURVIVE NODE CRASHES
     private static final int maxRetransmissions = 3;
@@ -26,13 +25,12 @@ public class MembershipService implements ClusterMembership {
 
     private final HashSet<String> membershipReplyNodes;
 
-    public MembershipService(String multicastIPAddr, int multicastIPPort, String nodeId, int tcpPort, boolean isRootNode) {
+    public MembershipService(String multicastIPAddr, int multicastIPPort, String nodeId, int tcpPort) {
         nodeMap = new TreeMap<>();
         this.multicastIpAddr = multicastIPAddr;
         this.multicastIPPort = multicastIPPort;
         this.nodeId = nodeId;
         this.tcpPort = tcpPort;
-        this.isRootNode = isRootNode;
         this.folderPath = Utils.generateFolderPath(nodeId);
         this.createNodeFolder();
         this.membershipReplyNodes = new HashSet<>();
@@ -42,7 +40,8 @@ public class MembershipService implements ClusterMembership {
     public boolean join() {
         this.addNodeToMap(this.nodeId, this.tcpPort);
 
-        if (this.isRootNode) return true;
+        // TODO Join protocol
+        this.multicastJoin();
 
         return true;
     }

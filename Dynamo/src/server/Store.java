@@ -11,9 +11,9 @@ import java.util.concurrent.Executors;
 
 public class Store {
     public static void main(String[] args) {
-        if (args.length < 4 || args.length > 5) {
+        if (args.length != 4) {
             System.out.println("Wrong number of arguments. Please invoke the program as:");
-            System.out.println("java Store <IP_mcast_addr> <IP_mcast_port> <node_id> <Store_port> [isRootNode]");
+            System.out.println("java Store <IP_mcast_addr> <IP_mcast_port> <node_id> <Store_port>");
             System.exit(1);
         }
 
@@ -22,12 +22,7 @@ public class Store {
         final String nodeId = args[2];
         final int storePort = Integer.parseInt(args[3]);
 
-        boolean isRootNode = false;
-        if (args.length == 5) {
-            isRootNode = Boolean.parseBoolean(args[4]);
-        }
-
-        final MembershipService membershipService = new MembershipService(multicastIPAddr, multicastIPPort, nodeId, storePort, isRootNode);
+        final MembershipService membershipService = new MembershipService(multicastIPAddr, multicastIPPort, nodeId, storePort);
         final StorageService storageService = new StorageService(membershipService.getNodeMap(), nodeId);
         final TransferService transferService = new TransferService(membershipService.getNodeMap());
         final ExecutorService executorService = Executors.newCachedThreadPool();
