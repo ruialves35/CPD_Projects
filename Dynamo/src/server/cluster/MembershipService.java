@@ -20,9 +20,7 @@ public class MembershipService implements ClusterMembership {
     private final String folderPath;
     private int membershipCounter = 0;  // NEEDS TO BE STORED IN NON-VOLATILE MEMORY TO SURVIVE NODE CRASHES
     private static final int maxRetransmissions = 3;
-    private static final int numMembershipMessages = 3;
     private int retransmissionCounter = 0;
-
     private final HashSet<String> membershipReplyNodes;
 
     public MembershipService(String multicastIPAddr, int multicastIPPort, String nodeId, int tcpPort) {
@@ -40,7 +38,6 @@ public class MembershipService implements ClusterMembership {
     public boolean join() {
         this.addNodeToMap(this.nodeId, this.tcpPort);
 
-        // TODO Join protocol
         this.multicastJoin();
 
         return true;
@@ -81,7 +78,7 @@ public class MembershipService implements ClusterMembership {
                 throw new RuntimeException(e);
             }
 
-            if (this.membershipReplyNodes.size() >= numMembershipMessages) {
+            if (this.membershipReplyNodes.size() >= Utils.numMembershipMessages) {
                 this.membershipReplyNodes.clear();
                 this.retransmissionCounter = 0;
                 System.out.println("New Node joined the distributed store");
@@ -211,7 +208,6 @@ public class MembershipService implements ClusterMembership {
 
                 Files.write(file.toPath(), filteredFile, StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING);
 
-                // TODO: UPDATE NODE MAP TAKING NEW LOG INTO ACCOUNT
                 // If the newMemberCounter is even, it is already added by the nodeMap received
                 if (newMemberCounter % 2 != 0) {
                     // Remove the node from the nodeMap

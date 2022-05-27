@@ -61,7 +61,6 @@ public class UDPListener implements Runnable {
 
     private boolean processEvent(DatagramPacket packet) {
         //System.out.println("Got Packet from :" + packet.getAddress());
-        // TODO Parse message and generate event
         Message message = new Message(packet.getData());
 
         InputStream is = new ByteArrayInputStream(message.getBody());
@@ -100,8 +99,7 @@ public class UDPListener implements Runnable {
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
-        // TODO: send membership message
 
-        return !"end".equals(message);
+        return !"end".equals(message.getAction());
     }
 }
