@@ -61,7 +61,13 @@ public class UDPListener implements Runnable {
 
     private boolean processEvent(DatagramPacket packet) {
         //System.out.println("Got Packet from :" + packet.getAddress());
-        Message message = new Message(packet.getData());
+        Message message = null;
+        try {
+            message = new Message(packet.getData());
+        } catch (IOException e) {
+            System.err.println(e.getMessage()); // TODO: What should I do here ??
+            return true;
+        }
 
         InputStream is = new ByteArrayInputStream(message.getBody());
         BufferedReader br = new BufferedReader(new InputStreamReader(is));
@@ -76,29 +82,42 @@ public class UDPListener implements Runnable {
             throw new RuntimeException(e);
         }
         System.out.printf("Received message from: %s (port %d). Membership Counter: %d%n", nodeId, tcpPort, membershipCounter);
-        if (this.repliedNodes.contains(Utils.generateKey(nodeId))) {
-            System.out.println("Received join from node that was already replied.");
-            return true;
+
+        switch (message.getAction()) {
+            case "join" -> {
+                if (this.repliedNodes.contains(Utils.generateKey(nodeId))) {
+                    System.out.println("Received join from node that was already replied.");
+                    return true;
+                }
+
+                // Updates view of the cluster membership and adds the log
+                this.membershipService.addNodeToMap(nodeId, tcpPort);
+                this.membershipService.addLog(nodeId, membershipCounter);
+
+                // Updated membership info TODO: CHECK IF THIS IS OK
+                this.repliedNodes.clear();
+                this.repliedNodes.add(Utils.generateKey(nodeId));
+
+                final int randomWait = new Random().nextInt(Utils.maxResponseTime);
+                try {
+                    Thread.sleep(randomWait);
+
+                    final byte[] body = this.membershipService.buildMembershipMsgBody();
+                    Message msg = new Message("reply", "join", body);
+                    Sender.sendTCPMessage(msg.toBytes(), nodeId, tcpPort);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+            case "leave" -> {
+                // Updates view of the cluster membership and adds the log
+                this.membershipService.removeNodeFromMap(nodeId);
+                this.membershipService.addLog(nodeId, membershipCounter);
+            }
         }
 
-        // Updates view of the cluster membership and adds the log
-        this.membershipService.getNodeMap().put(Utils.generateKey(nodeId), new Node(nodeId, tcpPort));
-        this.membershipService.addLog(nodeId, membershipCounter);
-
-        // Updated membership info TODO: CHECK IF THIS IS OK
-        this.repliedNodes.clear();
-        this.repliedNodes.add(Utils.generateKey(nodeId));
-
-        final int randomWait = new Random().nextInt(Utils.maxResponseTime);
-        try {
-            Thread.sleep(randomWait);
-
-            final byte[] body = this.membershipService.buildMembershipMsgBody();
-            Message msg = new Message("reply", "join", body);
-            Sender.sendTCPMessage(msg.toBytes(), nodeId, tcpPort);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
 
         return !"end".equals(message.getAction());
     }

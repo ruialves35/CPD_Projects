@@ -33,6 +33,6 @@ public class Utils {
     }
 
     public static String generateFolderPath(String nodeId) {
-        return "src/server/database/" + Utils.generateKey(nodeId) + "/";
+        return "database/" + Utils.generateKey(nodeId) + "/";
     }
 }

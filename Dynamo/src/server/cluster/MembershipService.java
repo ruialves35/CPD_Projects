@@ -8,7 +8,6 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.StandardOpenOption;
 import java.util.*;
-import java.util.stream.Collectors;
 
 public class MembershipService implements ClusterMembership {
     private final TreeMap<String, Node> nodeMap;
@@ -36,45 +35,64 @@ public class MembershipService implements ClusterMembership {
 
     @Override
     public boolean join() {
-        this.addNodeToMap(this.nodeId, this.tcpPort);
-
-        this.multicastJoin();
-
-        return true;
+        if (this.membershipCounter == 0 || !isClusterMember(this.membershipCounter)) {
+            if (this.membershipCounter != 0)    // Edge case for the first join
+                this.updateMembershipCounter(this.membershipCounter + 1);
+            this.addLog(this.nodeId, this.membershipCounter);
+            this.multicastJoin();
+            // TODO: OPEN UDP / TCP LISTENER ??
+            return true;
+        } else {
+            return false;
+        }
     }
 
     @Override
-    public void leave() {
+    public boolean leave() {
         // TODO Leave protocol
-        if (nodeMap.size() > 0) nodeMap.remove(Utils.generateKey("temp"));
+        if (isClusterMember(this.membershipCounter)) {
+            this.removeNodeFromMap(this.nodeId);
+            this.updateMembershipCounter(this.membershipCounter + 1);
+            this.addLog(this.nodeId, this.membershipCounter);
+            this.multicastLeave();
+            // TODO: CLOSE UDP / TCP LISTENER ??
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    /**
+     * Updates the membershipCounter value and stores it in non-volatile memory
+     * @param newCounter
+     */
+    public void updateMembershipCounter(int newCounter) {
+        this.membershipCounter = newCounter;
+
+        try {
+            File memberCounter = new File(this.folderPath + Utils.membershipCounterFileName);
+            FileWriter counterWriter;
+            counterWriter = new FileWriter(memberCounter, false);
+            counterWriter.write(String.valueOf(newCounter));
+            counterWriter.close();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     public TreeMap<String, Node> getNodeMap() {
         return nodeMap;
     }
 
-    /**
-     * Body has nodeId, tcp port and membership Counter
-     */
     private void multicastJoin() {
-        StringBuilder sb = new StringBuilder();
-        sb.append(this.nodeId).append(Utils.newLine);
-        sb.append(this.tcpPort).append(Utils.newLine);
-        sb.append(this.membershipCounter).append(Utils.newLine);
-        ByteArrayOutputStream out = new ByteArrayOutputStream();
-        try {
-            out.write(sb.toString().getBytes(StandardCharsets.UTF_8));
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-
-        Message msg = new Message("request", "join", out.toByteArray());
+        byte[] joinBody = buildMembershipBody();
+        Message msg = new Message("request", "join", joinBody);
 
         while (this.retransmissionCounter < maxRetransmissions) {
-            Sender.sendMulticast(msg.toBytes(), this.multicastIpAddr, this.multicastIPPort);
             try {
+                Sender.sendMulticast(msg.toBytes(), this.multicastIpAddr, this.multicastIPPort);
                 Thread.sleep(Utils.timeoutTime);
-            } catch (InterruptedException e) {
+            } catch (InterruptedException | IOException e) {
                 throw new RuntimeException(e);
             }
 
@@ -89,6 +107,45 @@ public class MembershipService implements ClusterMembership {
         }
 
         System.out.println("Prime Node joined the distributed store.");
+    }
+
+    private void multicastLeave() {
+        byte[] joinBody = buildMembershipBody();
+        Message msg = new Message("request", "leave", joinBody);
+
+        try {
+            Sender.sendMulticast(msg.toBytes(), this.multicastIpAddr, this.multicastIPPort);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+
+        System.out.println("Node left the distributed store.");
+    }
+
+    /**
+     * Body has nodeId, tcp port and membership Counter
+     */
+    private byte[] buildMembershipBody() {
+        StringBuilder sb = new StringBuilder();
+        sb.append(this.nodeId).append(Utils.newLine);
+        sb.append(this.tcpPort).append(Utils.newLine);
+        sb.append(this.membershipCounter).append(Utils.newLine);
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        try {
+            out.write(sb.toString().getBytes(StandardCharsets.UTF_8));
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+        return out.toByteArray();
+    }
+
+    /**
+     *
+     * @param counter
+     * @return true if a node is a member of the nodeMap. False otherwise.
+     */
+    public static boolean isClusterMember(int counter) {
+        return counter % 2 == 0;
     }
 
     public int getMulticastIPPort() {
@@ -209,7 +266,7 @@ public class MembershipService implements ClusterMembership {
                 Files.write(file.toPath(), filteredFile, StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING);
 
                 // If the newMemberCounter is even, it is already added by the nodeMap received
-                if (newMemberCounter % 2 != 0) {
+                if (!isClusterMember(newMemberCounter)) {
                     // Remove the node from the nodeMap
                     this.removeNodeFromMap(newNodeId);
                 }

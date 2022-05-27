@@ -80,14 +80,13 @@ public class TCPListener implements Runnable {
         final ByteArrayInputStream stream = new ByteArrayInputStream(message.getBody());
         final BufferedReader reader = new BufferedReader(new InputStreamReader(
                 new ByteArrayInputStream(message.getBody())));
-        Message reply;
 
+        Message reply = null;
         switch (message.getAction()) {
             case "join" -> {
                 if (this.membershipService.getMembershipReplyNodes().size() >= Utils.numMembershipMessages)
                         break;
 
-                // TODO: PARSE MEMBERSHIP MESSAGE (UPDATE LOG AND NODE MAP)
                 System.out.println("Received tcp reply to join");
                 InputStream is = new ByteArrayInputStream(message.getBody());
                 BufferedReader br = new BufferedReader(new InputStreamReader(is));

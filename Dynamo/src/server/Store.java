@@ -6,6 +6,7 @@ import server.network.UDPListener;
 import server.storage.StorageService;
 import server.storage.TransferService;
 
+import java.util.Scanner;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -31,6 +32,15 @@ public class Store {
 
         if (membershipService.join()) {
             executorService.submit(new UDPListener(storageService, membershipService, transferService, executorService));
+        }
+
+        // THIS IS FOR TESTING THE LEAVE
+        Scanner myObj = new Scanner(System.in);  // Create a Scanner object
+        System.out.println("Enter action");
+
+        String action = myObj.nextLine();  // Read user input
+        if (action.equals("leave")) {
+            membershipService.leave();
         }
 
         // TODO Adapt this to the client
