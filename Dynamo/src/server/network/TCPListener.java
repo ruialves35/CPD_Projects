@@ -13,6 +13,7 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.TreeMap;
 import java.util.concurrent.ExecutorService;
 
@@ -88,9 +89,14 @@ public class TCPListener implements Runnable {
                 InputStream is = new ByteArrayInputStream(message.getBody());
                 BufferedReader br = new BufferedReader(new InputStreamReader(is));
 
-                String line;
+                String line, nodeId;
                 final ArrayList<String> membershipLogs = new ArrayList<>();
                 try {
+                    nodeId = br.readLine();
+                    if (!this.membershipService.getMembershipReplyNodes().contains(Utils.generateKey(nodeId))) {
+                        this.membershipService.getMembershipReplyNodes().add(Utils.generateKey(nodeId));
+                    }
+
                     while ((line = br.readLine()) != null) {
                         if (line.isEmpty())
                             break;  // Reached the end of membership log
@@ -115,7 +121,6 @@ public class TCPListener implements Runnable {
                 }
 
                 System.out.println("Received membership Logs: " + membershipLogs + "\nnodeMap: " + this.membershipService.getNodeMap());
-                this.membershipService.setMembershipMessageCounter(this.membershipService.getMembershipMessageCounter() + 1);
 
                 reply = new Message("REP", "ok", "".getBytes(StandardCharsets.UTF_8));
             }

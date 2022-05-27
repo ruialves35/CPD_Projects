@@ -22,9 +22,9 @@ public class MembershipService implements ClusterMembership {
     private int membershipCounter = 0;  // NEEDS TO BE STORED IN NON-VOLATILE MEMORY TO SURVIVE NODE CRASHES
     private static final int maxRetransmissions = 3;
     private static final int numMembershipMessages = 3;
-
-    private int membershipMessageCounter = 0;
     private int retransmissionCounter = 0;
+
+    private final HashSet<String> membershipReplyNodes;
 
     public MembershipService(String multicastIPAddr, int multicastIPPort, String nodeId, int tcpPort, boolean isRootNode) {
         nodeMap = new TreeMap<>();
@@ -35,6 +35,7 @@ public class MembershipService implements ClusterMembership {
         this.isRootNode = isRootNode;
         this.folderPath = Utils.generateFolderPath(nodeId);
         this.createNodeFolder();
+        this.membershipReplyNodes = new HashSet<>();
     }
 
     @Override
@@ -80,8 +81,9 @@ public class MembershipService implements ClusterMembership {
             } catch (InterruptedException e) {
                 throw new RuntimeException(e);
             }
-            if (this.membershipMessageCounter >= numMembershipMessages) {
-                this.membershipMessageCounter = 0;
+
+            if (this.membershipReplyNodes.size() >= numMembershipMessages) {
+                this.membershipReplyNodes.clear();
                 this.retransmissionCounter = 0;
                 System.out.println("New Node joined the distributed store");
                 return;
@@ -227,7 +229,12 @@ public class MembershipService implements ClusterMembership {
 
     public byte[] buildMembershipMsgBody() {
         ByteArrayOutputStream byteOut = new ByteArrayOutputStream();
+
         try {
+            // Write node id
+            byteOut.write(this.nodeId.getBytes(StandardCharsets.UTF_8));
+            byteOut.write(Utils.newLine.getBytes(StandardCharsets.UTF_8));
+
             File file = new File(this.folderPath + Utils.membershipLogFileName);
             Scanner myReader = new Scanner(file);
             for (int i = 0; i < Utils.numLogEvents; i++) {
@@ -251,16 +258,12 @@ public class MembershipService implements ClusterMembership {
         return byteOut.toByteArray();
     }
 
-    public int getMembershipMessageCounter() {
-        return membershipMessageCounter;
-    }
-
     public int getRetransmissionCounter() {
         return retransmissionCounter;
     }
 
-    public void setMembershipMessageCounter(int membershipMessageCounter) {
-        this.membershipMessageCounter = membershipMessageCounter;
+    public HashSet<String> getMembershipReplyNodes() {
+        return membershipReplyNodes;
     }
 }
 
