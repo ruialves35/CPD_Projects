@@ -100,21 +100,7 @@ public class TCPListener implements Runnable {
             }
             case "saveFile" -> {
                 String key = reader.readLine();
-                int offset = key.length() + 2; // 2 = \r\n
-
-                //noinspection ResultOfMethodCallIgnored
-                stream.skip(offset);
-                byte[] file = stream.readAllBytes();
-
-                String filePath = storageService.getDbFolder() + key;
-                try (FileOutputStream fos = new FileOutputStream(filePath)) {
-                    fos.write(file);
-                    reply = new Message("REP", "ok", null);
-
-                } catch (IOException e) {
-                    System.out.println("Error opening file in put operation: " + filePath);
-                    reply = new Message("REP", "error", null);
-                }
+                reply = storageService.saveFile(key, stream);
             }
             case "delete" -> reply = storageService.delete(new String(message.getBody()));
             default -> {

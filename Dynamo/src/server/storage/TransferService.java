@@ -5,9 +5,11 @@ import common.Sender;
 import common.Utils;
 import server.cluster.Node;
 
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 
 public class TransferService {
@@ -24,7 +26,7 @@ public class TransferService {
         File[] nodeFiles = this.getNodeFiles(nextKey);
 
         if (sendFiles(nodeFiles, node, nextNode, true)) {
-            System.out.println("Sent files to joined node successfully");
+            System.out.println("Sent files from " + node.getId() + " - " + key + " to " + nextNode.getId() + " - " + nextKey);
         } else {
             System.out.println("Error sending files to joined node");
             return false;
@@ -56,14 +58,12 @@ public class TransferService {
     public Message createMsgFromFile(File file) {
         try (FileInputStream fis = new FileInputStream(file.getPath())) {
 
-            String name = file.getName() + "\r\n";
-            byte[] fileName = name.getBytes();
-            byte[] fileBody = fis.readAllBytes();
+            final ByteArrayOutputStream out = new ByteArrayOutputStream();
+            out.write(file.getName().getBytes(StandardCharsets.UTF_8));
+            out.write("\r\n".getBytes(StandardCharsets.UTF_8));
+            out.write(fis.readAllBytes());
 
-            byte[] value = Arrays.copyOf(fileName, fileName.length + fileBody.length);
-            System.arraycopy(fileBody, 0, value, fileName.length, fileBody.length);
-
-            return new Message("req", "saveFile", value);
+            return new Message("REQ", "saveFile", out.toByteArray());
         } catch (IOException e) {
             System.out.println("Error opening file in get operation: " + file.getPath());
             return new Message("REP", "error", null);
@@ -73,8 +73,8 @@ public class TransferService {
 
     /**
      * Sends all the files in a node Database by sending a TCP message.
-     * If isJoin, then sends files from nextNode to Node
-     * otherwise, sends files from node to nextNode
+     * If isJoin, then sends files from the next node to this node
+     * otherwise, sends files from this node to the next node
      * @param nodeFiles files from the node
      * @param node node that's joining or leaving
      * @param nextNode nextNode to node in the membership
@@ -85,13 +85,27 @@ public class TransferService {
         if (nodeFiles != null) {
             for (final File file : nodeFiles) {
                 String fileName = file.getName();
-                String key = Utils.generateKey(node.getId());
 
                 Message msg = createMsgFromFile(file);
                 try {
-                    if (isJoin && fileName.compareTo(key) < 0) {
-                        Sender.sendTCPMessage(msg.toBytes(), node.getId(), node.getPort());
-                    } else if (!isJoin) {
+                    if (isJoin) {
+                        String key = Utils.generateKey(node.getId());
+                        String nextNodeKey = Utils.generateKey(nextNode.getId());
+
+                        // file possibly belongs to the node
+                        if (fileName.compareTo(key) <= 0) {
+
+                            // its key is lower than next node so the file belongs to him
+                            if (key.compareTo(nextNodeKey) < 0)
+                                Sender.sendTCPMessage(msg.toBytes(), node.getId(), node.getPort());
+                            else if (fileName.compareTo(nextNodeKey) > 0)
+                                // node's key is bigger than next node key
+                                // but file was stored in the next Node despite not belong to him
+                                Sender.sendTCPMessage(msg.toBytes(), node.getId(), node.getPort());
+
+                        }
+
+                    } else {
                         Sender.sendTCPMessage(msg.toBytes(), nextNode.getId(), nextNode.getPort());
                     }
                 } catch (IOException e) {

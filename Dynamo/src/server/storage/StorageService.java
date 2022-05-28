@@ -4,10 +4,7 @@ import common.Message;
 import common.Utils;
 import server.cluster.Node;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.IOException;
+import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import java.util.TreeMap;
@@ -21,10 +18,6 @@ public class StorageService implements KeyValue {
         this.nodeMap = nodeMap;
         this.ownID = ownID;
         this.dbFolder = Utils.generateFolderPath(ownID);
-    }
-
-    public String getDbFolder() {
-        return dbFolder;
     }
 
     @Override
@@ -77,6 +70,28 @@ public class StorageService implements KeyValue {
         }
 
         return new Message("REP", "ok", null);
+    }
+
+    public Message saveFile(String key, ByteArrayInputStream stream) {
+        int offset = key.length() + 2; // 2 = \r\n
+
+        //noinspection ResultOfMethodCallIgnored
+        stream.skip(offset);
+        byte[] file = stream.readAllBytes();
+
+        String filePath = dbFolder + key;
+
+        Message reply;
+        try (FileOutputStream fos = new FileOutputStream(filePath)) {
+            fos.write(file);
+            reply = new Message("REP", "ok", null);
+
+        } catch (IOException e) {
+            System.out.println("Error opening file in put operation: " + filePath);
+            reply = new Message("REP", "error", null);
+        }
+
+        return reply;
     }
 
     /**
