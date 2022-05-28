@@ -25,8 +25,9 @@ public class TCPListener implements Runnable {
     private final String nodeIp;
     private final int port;
 
-    public TCPListener(StorageService storageService, MembershipService membershipService, TransferService transferService,
-                       ExecutorService executorService, String nodeIp, int port ) {
+    public TCPListener(StorageService storageService, MembershipService membershipService,
+            TransferService transferService,
+            ExecutorService executorService, String nodeIp, int port) {
         this.storageService = storageService;
         this.membershipService = membershipService;
         this.transferService = transferService;
@@ -66,11 +67,11 @@ public class TCPListener implements Runnable {
                     }
                 });
 
-                if (message.getAction().equals("leave")) break;
+                if (message.getAction().equals("leave"))
+                    break;
             }
             serverSocket.close();
-            }
-        catch (IOException e) {
+        } catch (IOException e) {
             System.out.println("Error opening TCP server");
             throw new RuntimeException(e);
         }
@@ -91,16 +92,31 @@ public class TCPListener implements Runnable {
             case "get" -> reply = storageService.get(new String(message.getBody()));
             case "put" -> {
                 String key = reader.readLine();
-                int offset = key.length() + 2; // 2 = \r\n
-
-                //noinspection ResultOfMethodCallIgnored
-                stream.skip(offset);
-                byte[] file = stream.readAllBytes();
+                byte[] file = readFileBytes(key, stream);
                 reply = storageService.put(key, file);
             }
             case "saveFile" -> {
                 String key = reader.readLine();
-                reply = storageService.saveFile(key, stream);
+                byte[] file = readFileBytes(key, stream);
+                reply = storageService.saveFile(key, file);
+            }
+            case "getAndDelete" -> {
+                String key = reader.readLine();
+                reply = storageService.getAndDelete(key);
+            }
+            case "getFiles" -> {
+                String key = reader.readLine();
+
+                File[] nodeFiles = storageService.getFiles(key);
+                StringBuilder sb = new StringBuilder();
+
+                if (nodeFiles != null) {
+                    for (File file : nodeFiles) {
+                        sb.append(file.getName()).append("\r\n");
+                    }
+                }
+
+                reply = new Message("REP", "ok", sb.toString().getBytes(StandardCharsets.UTF_8));
             }
             case "delete" -> reply = storageService.delete(new String(message.getBody()));
             default -> {
@@ -110,5 +126,13 @@ public class TCPListener implements Runnable {
         }
 
         ostream.write(reply.toBytes());
+    }
+
+    private byte[] readFileBytes(String key, ByteArrayInputStream stream) {
+        int offset = key.length() + 2; // 2 = \r\n
+
+        // noinspection ResultOfMethodCallIgnored
+        stream.skip(offset);
+        return stream.readAllBytes();
     }
 }

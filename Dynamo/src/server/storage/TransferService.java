@@ -5,28 +5,33 @@ import common.Sender;
 import common.Utils;
 import server.cluster.Node;
 
-import java.io.ByteArrayOutputStream;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.IOException;
+import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
 
 public class TransferService {
     private final TreeMap<String, Node> nodeMap;
-
-    public TransferService(TreeMap<String, Node> nodeMap) {
+    private final StorageService storageService;
+    public TransferService(TreeMap<String, Node> nodeMap, StorageService storageService) {
         this.nodeMap = nodeMap;
+        this.storageService = storageService;
     }
 
     public boolean join(Node node) {
         String key = Utils.generateKey(node.getId());
         Node nextNode = this.getNextNode(key);
         String nextKey = Utils.generateKey(nextNode.getId());
-        File[] nodeFiles = this.getNodeFiles(nextKey);
+        ArrayList<String> nextNodeFiles;
 
-        if (sendFiles(nodeFiles, node, nextNode, true)) {
-            System.out.println("Sent files from " + node.getId() + " - " + key + " to " + nextNode.getId() + " - " + nextKey);
+        try {
+            nextNodeFiles = this.getNodeFilesNames(nextNode);
+        } catch (IOException e) {
+            System.out.println("Could not get the files from the next node on Join.");
+            throw new RuntimeException(e);
+        }
+
+        if (processJoin(nextNodeFiles, node, nextNode)) {
+            System.out.println("Sent files from " + nextNode.getId() + " to " + node.getId());
         } else {
             System.out.println("Error sending files to joined node");
             return false;
@@ -37,11 +42,16 @@ public class TransferService {
 
     public void leave(Node node) {
         String key = Utils.generateKey(node.getId());
-        File[] nodeFiles = this.getNodeFiles(key);
+
+        String folderPath = "database/" + key + "/";
+        File folder = new File(folderPath);
+        File[] nodeFiles = folder.listFiles();
 
         Node nextNode = this.getNextNode(key);
 
-        if (sendFiles(nodeFiles, node, nextNode, false)) {
+        if (nodeFiles == null){
+            System.out.println("Node had no files to send on leave");
+        } else if (sendNodeFiles(nodeFiles, nextNode)) {
             System.out.println("Sent nodes from the leaving node successfully");
         } else {
             System.out.println("Error sending files from leaving node to next node");
@@ -52,7 +62,7 @@ public class TransferService {
     /**
      * Creates a Message request to save a file
      * @param file file to be saved
-     * @return if everything went well Message with saveFile actio,
+     * @return if everything went well Message with saveFile action,
      *         otherwise Message with error action
      */
     public Message createMsgFromFile(File file) {
@@ -66,51 +76,64 @@ public class TransferService {
             return new Message("REQ", "saveFile", out.toByteArray());
         } catch (IOException e) {
             System.out.println("Error opening file in get operation: " + file.getPath());
-            return new Message("REP", "error", null);
+            throw new RuntimeException(e);
+            //return new Message("REP", "error", null);
         }
     }
 
 
     /**
-     * Sends all the files in a node Database by sending a TCP message.
-     * If isJoin, then sends files from the next node to this node
-     * otherwise, sends files from this node to the next node
-     * @param nodeFiles files from the node
+     * Processes a join by checking if next node has files from this node
+     * if it has, then request to get and delete those files, and store
+     * them in this node
+     * @param nextNodeFiles array with the name of the files stored in nextNode
      * @param node node that's joining or leaving
-     * @param nextNode nextNode to node in the membership
-     * @param isJoin is join action
+     * @param nextNode nextNode to this node in the membership
      * @return true if no errors occur, false otherwise
      */
-    public boolean sendFiles(File[] nodeFiles, Node node, Node nextNode, boolean isJoin) {
-        if (nodeFiles != null) {
-            for (final File file : nodeFiles) {
-                String fileName = file.getName();
-
-                Message msg = createMsgFromFile(file);
+    public boolean processJoin(ArrayList<String> nextNodeFiles, Node node, Node nextNode) {
+        if (nextNodeFiles.size() != 0) {
+            for (final String fileName : nextNodeFiles) {
                 try {
-                    if (isJoin) {
-                        String key = Utils.generateKey(node.getId());
-                        String nextNodeKey = Utils.generateKey(nextNode.getId());
+                    String key = Utils.generateKey(node.getId());
+                    String nextNodeKey = Utils.generateKey(nextNode.getId());
 
-                        // file possibly belongs to the node
-                        if (fileName.compareTo(key) <= 0) {
+                    // file possibly belongs to the node
+                    if (fileName.compareTo(key) <= 0) {
 
-                            // its key is lower than next node so the file belongs to him
-                            if (key.compareTo(nextNodeKey) < 0)
-                                Sender.sendTCPMessage(msg.toBytes(), node.getId(), node.getPort());
-                            else if (fileName.compareTo(nextNodeKey) > 0)
-                                // node's key is bigger than next node key
-                                // but file was stored in the next Node despite not belong to him
-                                Sender.sendTCPMessage(msg.toBytes(), node.getId(), node.getPort());
-
+                        if (key.compareTo(nextNodeKey) < 0 || fileName.compareTo(nextNodeKey) > 0) {
+                            Message requestFile = new Message("REQ", "getAndDelete", fileName.getBytes(StandardCharsets.UTF_8));
+                            byte[] response = Sender.sendTCPMessage(requestFile.toBytes(), nextNode.getId(), nextNode.getPort());
+                            Message responseMsg = new Message(response);
+                            storageService.saveFile(key, responseMsg.getBody());
                         }
 
-                    } else {
-                        Sender.sendTCPMessage(msg.toBytes(), nextNode.getId(), nextNode.getPort());
                     }
+
                 } catch (IOException e) {
-                    return false;
+                    System.out.println("Could not get the files from the next node on Join.");
+                    throw new RuntimeException(e);
                 }
+            }
+        }
+        return true;
+    }
+
+
+    /**
+     * Sends the files in nodeFiles to a node
+     * @param nodeFiles array with the files to send
+     * @param node node to which we want to send the files
+     * @return true if sent all files, false otherwise
+     */
+    public boolean sendNodeFiles(File[] nodeFiles, Node node) {
+        for (final File file : nodeFiles) {
+            Message msg = createMsgFromFile(file);
+            try {
+                Sender.sendTCPMessage(msg.toBytes(), node.getId(), node.getPort());
+            } catch (IOException e) {
+                System.out.println("Could not send TCP message to send files to node " + node.getId());
+                throw new RuntimeException(e);
             }
         }
         return true;
@@ -134,17 +157,26 @@ public class TransferService {
 
 
     /**
-     * gets the Files in Node's database
-     * @param key key of the node
-     * @return array with Files stores in Node's database
+     * gets the name of the files in a node by requesting it throw TCP
+     * @param node node from which we want to get the files' names
+     * @return array with the name of the files stored in node's database
      */
-    public File[] getNodeFiles(String key) {
+    public ArrayList<String> getNodeFilesNames(Node node) throws IOException {
+        Message message = new Message("REQ", "getFiles", Utils.generateKey(node.getId()).getBytes(StandardCharsets.UTF_8));
 
-        // if it's join then we want to get the files of the next node
-        // if it's leave we want to get the files of the current node
-        String folderPath = "database/" + key + "/";
-        File folder = new File(folderPath);
-        return folder.listFiles();
+        byte[] response = Sender.sendTCPMessage(message.toBytes(), node.getId(), node.getPort());
+
+        Message reply = new Message(response);
+
+        final BufferedReader reader = new BufferedReader(new InputStreamReader(new ByteArrayInputStream(reply.getBody())));
+
+        ArrayList<String> lines = new ArrayList<>();
+        String line;
+        while ((line = reader.readLine()) != null) {
+            lines.add(line);
+        }
+
+        return lines;
     }
 
 }

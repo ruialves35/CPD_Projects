@@ -39,6 +39,7 @@ public class StorageService implements KeyValue {
 
     @Override
     public Message get(String key) {
+
         Node node = getResponsibleNode(key);
         if (!node.getId().equals(ownID))
             return buildRedirectMessage(node);
@@ -72,12 +73,28 @@ public class StorageService implements KeyValue {
         return new Message("REP", "ok", null);
     }
 
-    public Message saveFile(String key, ByteArrayInputStream stream) {
-        int offset = key.length() + 2; // 2 = \r\n
+    public Message getAndDelete(String key) {
+        String filePath = dbFolder + key;
+        byte[] value;
 
-        //noinspection ResultOfMethodCallIgnored
-        stream.skip(offset);
-        byte[] file = stream.readAllBytes();
+        try (FileInputStream fis = new FileInputStream(filePath)) {
+            value = fis.readAllBytes();
+        } catch (IOException e) {
+            System.out.println("Error opening file in get operation: " + filePath);
+            return new Message("REP", "error", null);
+        }
+
+        File file = new File(filePath);
+        if (file.delete()) {
+            System.out.println("Successfully Deleted file: " + file.getName() + " from node: " + dbFolder );
+        } else {
+            System.out.println("Failed to delete the file.");
+        }
+
+        return new Message("REP", "ok", value);
+    }
+
+    public Message saveFile(String key, byte[] file) {
 
         String filePath = dbFolder + key;
 
@@ -92,6 +109,12 @@ public class StorageService implements KeyValue {
         }
 
         return reply;
+    }
+
+    public File[] getFiles(String key) {
+        String folderPath = "database/" + key + "/";
+        File folder = new File(folderPath);
+        return folder.listFiles();
     }
 
     /**
