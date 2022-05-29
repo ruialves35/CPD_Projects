@@ -21,6 +21,7 @@ public class MembershipService implements ClusterMembership {
     private static final int maxRetransmissions = 3;
     private int retransmissionCounter = 0;
     private final HashSet<String> membershipReplyNodes;
+    private final HashSet<String> repliedNodes;
 
     public MembershipService(String multicastIPAddr, int multicastIPPort, String nodeId, int tcpPort) {
         nodeMap = new TreeMap<>();
@@ -29,26 +30,26 @@ public class MembershipService implements ClusterMembership {
         this.nodeId = nodeId;
         this.tcpPort = tcpPort;
         this.folderPath = Utils.generateFolderPath(nodeId);
-        this.createNodeFolder();
         this.membershipReplyNodes = new HashSet<>();
+        this.repliedNodes = new HashSet<>();
+        this.createNodeFolder();
     }
 
     @Override
-    public boolean join() {
+    public void join() {
         if (this.membershipCounter == 0 || !isClusterMember(this.membershipCounter)) {
             if (this.membershipCounter != 0)    // Edge case for the first join
                 this.updateMembershipCounter(this.membershipCounter + 1);
             this.addLog(this.nodeId, this.membershipCounter);
             this.multicastJoin();
             // TODO: OPEN UDP / TCP LISTENER ??
-            return true;
         } else {
-            return false;
+            throw new RuntimeException("Attempting to join the cluster while being already a member.");
         }
     }
 
     @Override
-    public boolean leave() {
+    public void leave() {
         // TODO Leave protocol
         if (isClusterMember(this.membershipCounter)) {
             this.removeNodeFromMap(this.nodeId);
@@ -56,9 +57,8 @@ public class MembershipService implements ClusterMembership {
             this.addLog(this.nodeId, this.membershipCounter);
             this.multicastLeave();
             // TODO: CLOSE UDP / TCP LISTENER ??
-            return true;
         } else {
-            return false;
+            throw new RuntimeException("Attempting to leave the cluster while not being a member.");
         }
     }
 
@@ -89,18 +89,22 @@ public class MembershipService implements ClusterMembership {
         Message msg = new Message("request", "join", joinBody);
 
         while (this.retransmissionCounter < maxRetransmissions) {
+            int elapsedTime = 0;
             try {
                 Sender.sendMulticast(msg.toBytes(), this.multicastIpAddr, this.multicastIPPort);
-                Thread.sleep(Utils.timeoutTime);
+                while (elapsedTime < Utils.timeoutTime) {
+                    Thread.sleep(1000);
+                    if (this.membershipReplyNodes.size() >= Utils.numMembershipMessages) {
+                        this.membershipReplyNodes.clear();
+                        this.retransmissionCounter = 0;
+                        System.out.println("New Node joined the distributed store");
+                        return;
+                    }
+
+                    elapsedTime += 1000;
+                }
             } catch (InterruptedException | IOException e) {
                 throw new RuntimeException(e);
-            }
-
-            if (this.membershipReplyNodes.size() >= Utils.numMembershipMessages) {
-                this.membershipReplyNodes.clear();
-                this.retransmissionCounter = 0;
-                System.out.println("New Node joined the distributed store");
-                return;
             }
 
             this.retransmissionCounter++;
@@ -110,8 +114,8 @@ public class MembershipService implements ClusterMembership {
     }
 
     private void multicastLeave() {
-        byte[] joinBody = buildMembershipBody();
-        Message msg = new Message("request", "leave", joinBody);
+        byte[] leaveBody = buildMembershipBody();
+        Message msg = new Message("request", "leave", leaveBody);
 
         try {
             Sender.sendMulticast(msg.toBytes(), this.multicastIpAddr, this.multicastIPPort);
@@ -155,10 +159,6 @@ public class MembershipService implements ClusterMembership {
     public String getMulticastIpAddr() {
         return multicastIpAddr;
     }
-
-    public String getNodeId() {return nodeId;}
-
-    public int getTcpPort() {return tcpPort;}
 
     /**
      * Adds a new node to the nodeMap.
@@ -310,18 +310,75 @@ public class MembershipService implements ClusterMembership {
         return byteOut.toByteArray();
     }
 
-    public int getRetransmissionCounter() {
-        return retransmissionCounter;
-    }
-
     public HashSet<String> getMembershipReplyNodes() {
         return membershipReplyNodes;
     }
-}
 
-/**
- * Use the membership Log to recognize how many nodes are in the system currently. This way, if there are less than 3, we can join with less than
- * 3 joins. For the first node however, maybe we should initialize it through the optional argument.
- *
- * We need to establish the header
- */
+    public void handleJoinRequest(String nodeId, int tcpPort, int membershipCounter) {
+        if (this.repliedNodes.contains(Utils.generateKey(nodeId))) {
+            System.out.println("Received join from node that was already replied.");
+            return;
+        }
+
+        // Updates view of the cluster membership and adds the log
+        this.addNodeToMap(nodeId, tcpPort);
+        this.addLog(nodeId, membershipCounter);
+
+        // Updated membership info TODO: CHECK IF THIS IS OK
+        this.repliedNodes.clear();
+        this.repliedNodes.add(Utils.generateKey(nodeId));
+
+        final int randomWait = new Random().nextInt(Utils.maxResponseTime);
+        try {
+            Thread.sleep(randomWait);
+
+            final byte[] body = this.buildMembershipMsgBody();
+            Message msg = new Message("reply", "join", body);
+            server.network.Sender.sendTCPMessage(msg.toBytes(), nodeId, tcpPort);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public void handleMembershipResponse(Message message) {
+        if (this.getMembershipReplyNodes().size() >= Utils.numMembershipMessages)
+            return;
+
+        System.out.println("Received tcp reply to join");
+        InputStream is = new ByteArrayInputStream(message.getBody());
+        BufferedReader br = new BufferedReader(new InputStreamReader(is));
+
+        String line, nodeId;
+        final ArrayList<String> membershipLogs = new ArrayList<>();
+        try {
+            nodeId = br.readLine();
+            this.getMembershipReplyNodes().add(Utils.generateKey(nodeId)); // adds node to set if not present
+
+            while ((line = br.readLine()) != null) {
+                if (line.isEmpty())
+                    break;  // Reached the end of membership log
+                membershipLogs.add(line);
+            }
+
+            while ((line = br.readLine()) != null) {
+                String[] data = line.split(" ");
+                String newNodeId = data[0];
+                int newNodePort = Integer.parseInt(data[1]);
+                this.addNodeToMap(newNodeId, newNodePort);    // Check what happens when adding node that already exists
+            }
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+
+        for (String newLog : membershipLogs) {
+            String[] logData = newLog.split(" ");
+            String logId = logData[0];
+            int logCounter = Integer.parseInt(logData[1]);
+            this.addLog(logId, logCounter);
+        }
+
+        System.out.println("Received membership Logs: " + membershipLogs + "\nnodeMap: " + this.getNodeMap());
+    }
+}

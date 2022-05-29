@@ -20,15 +20,12 @@ public class UDPListener implements Runnable {
     private final TransferService transferService;
     private final ExecutorService executorService;
 
-    private final HashSet<String> repliedNodes;
-
     public UDPListener(StorageService storageService, MembershipService membershipService, TransferService transferService,
                        ExecutorService executorService) {
         this.storageService = storageService;
         this.membershipService = membershipService;
         this.transferService = transferService;
         this.executorService = executorService;
-        this.repliedNodes = new HashSet<>();
     }
 
     public void run() {
@@ -46,9 +43,16 @@ public class UDPListener implements Runnable {
                 DatagramPacket packet = new DatagramPacket(msg, msg.length);
 
                 socket.receive(packet);
+                try {
+                    final Message message = new Message(packet.getData());
+                    executorService.submit(() -> {
+                        processEvent(message);
+                    });
 
-                if (!this.processEvent(packet)) // TODO: RUN IN ANOTHER THREAD
-                    break;
+                    if (!"end".equals(message.getAction())) break;
+                } catch (IOException e) {
+                    System.err.println(e.getMessage());
+                }
             }
 
             socket.leaveGroup(group, netInf);
@@ -59,16 +63,7 @@ public class UDPListener implements Runnable {
         }
     }
 
-    private boolean processEvent(DatagramPacket packet) {
-        //System.out.println("Got Packet from :" + packet.getAddress());
-        Message message = null;
-        try {
-            message = new Message(packet.getData());
-        } catch (IOException e) {
-            System.err.println(e.getMessage()); // TODO: What should I do here ??
-            return true;
-        }
-
+    private void processEvent(Message message) {
         InputStream is = new ByteArrayInputStream(message.getBody());
         BufferedReader br = new BufferedReader(new InputStreamReader(is));
 
@@ -85,31 +80,7 @@ public class UDPListener implements Runnable {
 
         switch (message.getAction()) {
             case "join" -> {
-                if (this.repliedNodes.contains(Utils.generateKey(nodeId))) {
-                    System.out.println("Received join from node that was already replied.");
-                    return true;
-                }
-
-                // Updates view of the cluster membership and adds the log
-                this.membershipService.addNodeToMap(nodeId, tcpPort);
-                this.membershipService.addLog(nodeId, membershipCounter);
-
-                // Updated membership info TODO: CHECK IF THIS IS OK
-                this.repliedNodes.clear();
-                this.repliedNodes.add(Utils.generateKey(nodeId));
-
-                final int randomWait = new Random().nextInt(Utils.maxResponseTime);
-                try {
-                    Thread.sleep(randomWait);
-
-                    final byte[] body = this.membershipService.buildMembershipMsgBody();
-                    Message msg = new Message("reply", "join", body);
-                    Sender.sendTCPMessage(msg.toBytes(), nodeId, tcpPort);
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
-                } catch (IOException e) {
-                    throw new RuntimeException(e);
-                }
+                this.membershipService.handleJoinRequest(nodeId, tcpPort, membershipCounter);
             }
             case "leave" -> {
                 // Updates view of the cluster membership and adds the log
@@ -117,8 +88,5 @@ public class UDPListener implements Runnable {
                 this.membershipService.addLog(nodeId, membershipCounter);
             }
         }
-
-
-        return !"end".equals(message.getAction());
     }
 }

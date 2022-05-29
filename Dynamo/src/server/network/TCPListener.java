@@ -84,45 +84,7 @@ public class TCPListener implements Runnable {
         Message reply = null;
         switch (message.getAction()) {
             case "join" -> {
-                if (this.membershipService.getMembershipReplyNodes().size() >= Utils.numMembershipMessages)
-                        break;
-
-                System.out.println("Received tcp reply to join");
-                InputStream is = new ByteArrayInputStream(message.getBody());
-                BufferedReader br = new BufferedReader(new InputStreamReader(is));
-
-                String line, nodeId;
-                final ArrayList<String> membershipLogs = new ArrayList<>();
-                try {
-                    nodeId = br.readLine();
-                    if (!this.membershipService.getMembershipReplyNodes().contains(Utils.generateKey(nodeId))) {
-                        this.membershipService.getMembershipReplyNodes().add(Utils.generateKey(nodeId));
-                    }
-
-                    while ((line = br.readLine()) != null) {
-                        if (line.isEmpty())
-                            break;  // Reached the end of membership log
-                        membershipLogs.add(line);
-                    }
-
-                    while ((line = br.readLine()) != null) {
-                        String[] data = line.split(" ");
-                        String newNodeId = data[0];
-                        int newNodePort = Integer.parseInt(data[1]);
-                        this.membershipService.addNodeToMap(newNodeId, newNodePort);    // Check what happens when adding node that already exists
-                    }
-                } catch (IOException e) {
-                    throw new RuntimeException(e);
-                }
-
-                for (String newLog : membershipLogs) {
-                    String[] logData = newLog.split(" ");
-                    String logId = logData[0];
-                    int logCounter = Integer.parseInt(logData[1]);
-                    this.membershipService.addLog(logId, logCounter);
-                }
-
-                System.out.println("Received membership Logs: " + membershipLogs + "\nnodeMap: " + this.membershipService.getNodeMap());
+                this.membershipService.handleMembershipResponse(message);
 
                 reply = new Message("REP", "ok", "".getBytes(StandardCharsets.UTF_8));
             }
