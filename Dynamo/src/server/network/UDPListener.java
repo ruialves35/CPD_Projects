@@ -17,31 +17,31 @@ public class UDPListener implements Runnable {
     private final MembershipService membershipService;
     private final TransferService transferService;
     private final ExecutorService executorService;
+    private final MulticastSocket multicastSocket;
 
-    public UDPListener(StorageService storageService, MembershipService membershipService,
-            TransferService transferService,
-            ExecutorService executorService) {
+    public UDPListener(StorageService storageService, MembershipService membershipService, TransferService transferService,
+                       ExecutorService executorService, MulticastSocket multicastSocket) {
         this.storageService = storageService;
         this.membershipService = membershipService;
         this.transferService = transferService;
         this.executorService = executorService;
+        this.multicastSocket = multicastSocket;
     }
 
     public void run() {
         try {
-            MulticastSocket socket = new MulticastSocket(this.membershipService.getMulticastIPPort());
             InetSocketAddress group = new InetSocketAddress(
                     this.membershipService.getMulticastIpAddr(),
                     this.membershipService.getMulticastIPPort());
             NetworkInterface netInf = NetworkInterface.getByIndex(0);
-            socket.joinGroup(group, netInf);
+            this.multicastSocket.joinGroup(group, netInf);
 
             System.out.println("Listening UDP messages");
             while (true) {
                 byte[] msg = new byte[Message.MAX_MSG_SIZE];
                 DatagramPacket packet = new DatagramPacket(msg, msg.length);
 
-                socket.receive(packet);
+                this.multicastSocket.receive(packet);
                 try {
                     final Message message = new Message(packet.getData());
                     executorService.submit(() -> processEvent(message));
@@ -53,8 +53,10 @@ public class UDPListener implements Runnable {
                 }
             }
 
-            socket.leaveGroup(group, netInf);
-            socket.close();
+            this.multicastSocket.leaveGroup(group, netInf);
+            this.multicastSocket.close();
+        } catch (SocketException se) {
+            System.out.println("[UDPListener] Detected SocketException.");
         } catch (IOException e) {
             System.out.println("Error opening UDP server");
             throw new RuntimeException(e);

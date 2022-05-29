@@ -8,9 +8,12 @@ import server.storage.StorageService;
 import server.storage.TombstoneManager;
 import server.storage.TransferService;
 
+import java.io.IOException;
+import java.net.*;
 import java.util.Scanner;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 public class Store {
     public static void main(String[] args) {
@@ -30,18 +33,34 @@ public class Store {
         final MembershipService membershipService = new MembershipService(multicastIPAddr, multicastIPPort, nodeId,
                 storePort);
         final StorageService storageService = new StorageService(membershipService.getNodeMap(), nodeId, executorService);
-        final TransferService transferService = new TransferService(storageService, new Node(nodeId, storePort));
+        final TransferService transferService = new TransferService(membershipService.getNodeMap(), storageService, new Node(nodeId, storePort));
+        final ExecutorService executorService = Executors.newCachedThreadPool();     // TODO: CHANGED TO newFixedThreadPool?
 
+        ServerSocket serverSocket = null;
+        MulticastSocket multicastSocket = null;
         try {
-            executorService.submit(new TCPListener(storageService, membershipService, transferService, executorService,
-                    nodeId, storePort));
+            // THERE ARE 2 SOLUTIONS: THIS ONE or LEAVING THE THREADS RUNNING BUT NOT PROCESSING THE EVENTS
+            try {
+                InetAddress addr = InetAddress.getByName(nodeId);
+                serverSocket = new ServerSocket(storePort, 50, addr);
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+
+            executorService.submit(new TCPListener(storageService, membershipService, transferService, executorService, serverSocket));
+
 
             membershipService.join();
             transferService.join();
-            executorService
-                    .submit(new UDPListener(storageService, membershipService, transferService, executorService));
-            executorService.submit(new TombstoneManager(storageService.getDbFolder()));
-        } catch (RuntimeException re) {
+
+            try {
+                multicastSocket = new MulticastSocket(multicastIPPort);
+                executorService.submit(new UDPListener(storageService, membershipService, transferService, executorService, multicastSocket));
+                executorService.submit(new TombstoneManager(storageService.getDbFolder()));
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        } catch(RuntimeException re) {
             System.err.println(re.getMessage());
             // Clear ExecutorService threads?
         }
@@ -53,6 +72,23 @@ public class Store {
         String action = myObj.nextLine(); // Read user input
         if (action.equals("leave")) {
             try {
+                try {
+                    if (serverSocket != null) serverSocket.close();
+                    if (multicastSocket != null) {
+                        InetSocketAddress group = new InetSocketAddress(multicastIPAddr, multicastIPPort);
+                        NetworkInterface netInf = NetworkInterface.getByIndex(0);
+                        multicastSocket.leaveGroup(group, netInf);
+                        multicastSocket.close();
+                    }
+                    executorService.shutdownNow();
+                    if (executorService.awaitTermination(1, TimeUnit.SECONDS)) {
+                        System.out.println("Executor terminated.");
+                    } else {
+                        System.out.println("Executor still running");
+                    }
+                } catch (InterruptedException | IOException e) {
+                    throw new RuntimeException(e);
+                }
                 transferService.leave();
                 membershipService.leave();
             } catch (RuntimeException re) {

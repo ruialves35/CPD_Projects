@@ -8,6 +8,12 @@ import java.security.NoSuchAlgorithmException;
 public class Utils {
     public static final String newLine = "\r\n";
 
+    public static final int maxResponseTime = 1000;    // TODO: CHECK THIS VALUES
+    public static final int timeoutTime = 3000;
+    public static final int timeoutStepTime = 500;
+
+    public static final int numMembershipMessages = 3;
+
     public static String generateKey(final String hashable) {
         return generateKey(hashable.getBytes(StandardCharsets.UTF_8));
     }

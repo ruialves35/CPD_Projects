@@ -4,13 +4,14 @@ import common.Message;
 import server.cluster.MembershipService;
 import server.storage.StorageService;
 import server.storage.TransferService;
-
 import java.io.*;
 import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.net.SocketException;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.ArrayList;
 import java.util.concurrent.ExecutorService;
 
 public class TCPListener implements Runnable {
@@ -18,28 +19,24 @@ public class TCPListener implements Runnable {
     private final MembershipService membershipService;
     private final TransferService transferService;
     private final ExecutorService executorService;
-    private final String nodeIp;
-    private final int port;
 
-    public TCPListener(StorageService storageService, MembershipService membershipService,
-            TransferService transferService,
-            ExecutorService executorService, String nodeIp, int port) {
+    private final ServerSocket serverSocket;
+
+    public TCPListener(StorageService storageService, MembershipService membershipService, TransferService transferService,
+                       ExecutorService executorService, ServerSocket serverSocket) {
         this.storageService = storageService;
         this.membershipService = membershipService;
         this.transferService = transferService;
         this.executorService = executorService;
-        this.nodeIp = nodeIp;
-        this.port = port;
+        this.serverSocket = serverSocket;
     }
 
     public void run() {
         try {
-            InetAddress addr = InetAddress.getByName(nodeIp);
-            ServerSocket serverSocket = new ServerSocket(this.port, 50, addr);
             System.out.println("Listening for TCP Messages in address " + serverSocket.getInetAddress() +
                     " port " + serverSocket.getLocalPort());
             while (true) {
-                Socket socket = serverSocket.accept();
+                Socket socket = this.serverSocket.accept();
                 DataInputStream istream = new DataInputStream(socket.getInputStream());
                 DataOutputStream ostream = new DataOutputStream(socket.getOutputStream());
 
@@ -67,6 +64,8 @@ public class TCPListener implements Runnable {
                     break;
             }
             serverSocket.close();
+        } catch (SocketException se) {
+            System.out.println("[TCPListener] Detected SocketException.");
         } catch (IOException e) {
             System.out.println("Error opening TCP server");
             throw new RuntimeException(e);

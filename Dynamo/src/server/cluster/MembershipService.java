@@ -37,6 +37,9 @@ public class MembershipService implements ClusterMembership {
         this.createNodeFolder();
     }
 
+    /**
+     * This methods throws a RuntimeException if it fails
+     */
     @Override
     public void join() {
         if (this.membershipCounter == 0 || !isClusterMember(this.membershipCounter)) {
@@ -50,6 +53,9 @@ public class MembershipService implements ClusterMembership {
         }
     }
 
+    /**
+     * This methods throws a RuntimeException if it fails
+     */
     @Override
     public void leave() {
         // TODO Leave protocol
