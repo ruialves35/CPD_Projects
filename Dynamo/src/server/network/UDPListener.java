@@ -1,16 +1,18 @@
 package server.network;
 
 import common.Message;
+import common.Utils;
 import server.cluster.MembershipService;
+import server.cluster.Node;
 import server.storage.StorageService;
 import server.storage.TransferService;
-
-import java.io.IOException;
-import java.net.DatagramPacket;
-import java.net.InetSocketAddress;
-import java.net.MulticastSocket;
-import java.net.NetworkInterface;
+import java.io.*;
+import java.net.*;
+import java.nio.Buffer;
+import java.nio.ByteBuffer;
+import java.util.*;
 import java.util.concurrent.ExecutorService;
+import java.util.stream.Stream;
 
 public class UDPListener implements Runnable {
     private final StorageService storageService;
@@ -41,10 +43,16 @@ public class UDPListener implements Runnable {
                 DatagramPacket packet = new DatagramPacket(msg, msg.length);
 
                 socket.receive(packet);
-                Message message = new Message(packet.getData());
+                try {
+                    final Message message = new Message(packet.getData());
+                    executorService.submit(() -> {
+                        processEvent(message);
+                    });
 
-                this.processEvent(message);
-                if (message.getAction().equals("leave")) break;
+                    if (message.getAction().equals("leave")) break;
+                } catch (IOException e) {
+                    System.err.println(e.getMessage());
+                }
             }
 
             socket.leaveGroup(group, netInf);
@@ -56,6 +64,29 @@ public class UDPListener implements Runnable {
     }
 
     private void processEvent(Message message) {
+        InputStream is = new ByteArrayInputStream(message.getBody());
+        BufferedReader br = new BufferedReader(new InputStreamReader(is));
 
+        String nodeId;
+        int tcpPort, membershipCounter;
+        try {
+            nodeId = br.readLine();
+            tcpPort = Integer.parseInt(br.readLine());
+            membershipCounter = Integer.parseInt(br.readLine());
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+        System.out.printf("Received message from: %s (port %d). Membership Counter: %d%n", nodeId, tcpPort, membershipCounter);
+
+        switch (message.getAction()) {
+            case "join" -> {
+                this.membershipService.handleJoinRequest(nodeId, tcpPort, membershipCounter);
+            }
+            case "leave" -> {
+                // Updates view of the cluster membership and adds the log
+                this.membershipService.removeNodeFromMap(nodeId);
+                this.membershipService.addLog(nodeId, membershipCounter);
+            }
+        }
     }
 }

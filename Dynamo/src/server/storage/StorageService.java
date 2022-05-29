@@ -20,7 +20,7 @@ public class StorageService implements KeyValue {
     public StorageService(TreeMap<String, Node> nodeMap, String ownID) {
         this.nodeMap = nodeMap;
         this.ownID = ownID;
-        this.dbFolder = createNodeFolder();
+        this.dbFolder = Utils.generateFolderPath(ownID);
     }
 
     @Override

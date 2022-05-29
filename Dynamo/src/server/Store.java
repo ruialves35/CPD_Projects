@@ -6,14 +6,15 @@ import server.network.UDPListener;
 import server.storage.StorageService;
 import server.storage.TransferService;
 
+import java.util.Scanner;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 public class Store {
     public static void main(String[] args) {
-        if (args.length < 4 || args.length > 5) {
+        if (args.length != 4) {
             System.out.println("Wrong number of arguments. Please invoke the program as:");
-            System.out.println("java Store <IP_mcast_addr> <IP_mcast_port> <node_id> <Store_port> [isRootNode]");
+            System.out.println("java Store <IP_mcast_addr> <IP_mcast_port> <node_id> <Store_port>");
             System.exit(1);
         }
 
@@ -22,22 +23,34 @@ public class Store {
         final String nodeId = args[2];
         final int storePort = Integer.parseInt(args[3]);
 
-        boolean isRootNode = false;
-        if (args.length == 5) {
-            isRootNode = Boolean.parseBoolean(args[4]);
-        }
-
-        final MembershipService membershipService = new MembershipService(multicastIPAddr, multicastIPPort, nodeId, isRootNode);
+        final MembershipService membershipService = new MembershipService(multicastIPAddr, multicastIPPort, nodeId, storePort);
         final StorageService storageService = new StorageService(membershipService.getNodeMap(), nodeId);
         final TransferService transferService = new TransferService(membershipService.getNodeMap());
         final ExecutorService executorService = Executors.newCachedThreadPool();
 
-        executorService.submit(new TCPListener(storageService, membershipService, transferService, executorService, nodeId, storePort));
+        try {
+            executorService.submit(new TCPListener(storageService, membershipService, transferService, executorService, nodeId, storePort));
 
-        if (membershipService.join()) {
+            membershipService.join();
             executorService.submit(new UDPListener(storageService, membershipService, transferService, executorService));
+        } catch(RuntimeException re) {
+            System.err.println(re.getMessage());
+            // Clear ExecutorService threads?
         }
 
-        membershipService.join();
+
+        // THIS IS FOR TESTING THE LEAVE
+        Scanner myObj = new Scanner(System.in);  // Create a Scanner object
+        System.out.println("> Enter action");
+
+        String action = myObj.nextLine();  // Read user input
+        if (action.equals("leave")) {
+            try {
+                membershipService.leave();
+            } catch (RuntimeException re) {
+                System.err.println(re.getMessage());
+                // Clear ExecutorService threads?
+            }
+        }
     }
 }

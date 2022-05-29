@@ -1,7 +1,9 @@
 package server.network;
 
 import common.Message;
+import common.Utils;
 import server.cluster.MembershipService;
+import server.cluster.Node;
 import server.storage.StorageService;
 import server.storage.TransferService;
 
@@ -9,6 +11,10 @@ import java.io.*;
 import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.TreeMap;
 import java.util.concurrent.ExecutorService;
 
 public class TCPListener implements Runnable {
@@ -74,9 +80,14 @@ public class TCPListener implements Runnable {
         final ByteArrayInputStream stream = new ByteArrayInputStream(message.getBody());
         final BufferedReader reader = new BufferedReader(new InputStreamReader(
                 new ByteArrayInputStream(message.getBody())));
-        Message reply;
 
+        Message reply = null;
         switch (message.getAction()) {
+            case "join" -> {
+                this.membershipService.handleMembershipResponse(message);
+
+                reply = new Message("REP", "ok", "".getBytes(StandardCharsets.UTF_8));
+            }
             case "get" -> reply = storageService.get(new String(message.getBody()));
             case "put" -> {
                 String key = reader.readLine();

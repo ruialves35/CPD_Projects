@@ -1,12 +1,11 @@
 package common;
-
 import java.io.*;
 import java.nio.charset.StandardCharsets;
 
 /**
  * Message Structure
- * | type             |     (Request or Reply)
- * | action           |     ( join/leave/get/put/delete)
+ * | type             |     ( request or reply )
+ * | action           |     ( join/leave/get/put/delete )
  * | CRLF             |
  * | Body             |
  */
@@ -29,7 +28,7 @@ public class Message {
         this.action = reader.readLine();
         reader.readLine(); // last empty line
 
-        int bodyOffset = type.length() + action.length() + 6; // 6 chars used for newlines
+        int bodyOffset = type.length() + action.length() + 6; // 2 chars used for newlines per row on top
 
         //noinspection ResultOfMethodCallIgnored
         stream.skip(bodyOffset);
@@ -48,11 +47,11 @@ public class Message {
     public byte[] toBytes() throws IOException {
         StringBuilder sb = new StringBuilder();
 
-        sb.append(type).append("\r\n");
-        sb.append(action).append("\r\n");
+        sb.append(type).append(Utils.newLine);
+        sb.append(action).append(Utils.newLine);
 
         // empty line
-        sb.append("\r\n");
+        sb.append(Utils.newLine);
 
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         out.write(sb.toString().getBytes(StandardCharsets.UTF_8));
