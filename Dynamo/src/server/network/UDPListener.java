@@ -49,7 +49,7 @@ public class UDPListener implements Runnable {
                         processEvent(message);
                     });
 
-                    if (!"end".equals(message.getAction())) break;
+                    if (message.getAction().equals("leave")) break;
                 } catch (IOException e) {
                     System.err.println(e.getMessage());
                 }

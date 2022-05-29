@@ -93,7 +93,7 @@ public class MembershipService implements ClusterMembership {
             try {
                 Sender.sendMulticast(msg.toBytes(), this.multicastIpAddr, this.multicastIPPort);
                 while (elapsedTime < Utils.timeoutTime) {
-                    Thread.sleep(1000);
+                    Thread.sleep(Utils.timeoutStepTime);
                     if (this.membershipReplyNodes.size() >= Utils.numMembershipMessages) {
                         this.membershipReplyNodes.clear();
                         this.retransmissionCounter = 0;
@@ -101,7 +101,7 @@ public class MembershipService implements ClusterMembership {
                         return;
                     }
 
-                    elapsedTime += 1000;
+                    elapsedTime += Utils.timeoutStepTime;
                 }
             } catch (InterruptedException | IOException e) {
                 throw new RuntimeException(e);

@@ -41,7 +41,7 @@ public class Store {
 
         // THIS IS FOR TESTING THE LEAVE
         Scanner myObj = new Scanner(System.in);  // Create a Scanner object
-        System.out.println("Enter action");
+        System.out.println("> Enter action");
 
         String action = myObj.nextLine();  // Read user input
         if (action.equals("leave")) {
