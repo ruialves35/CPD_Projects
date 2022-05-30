@@ -44,7 +44,7 @@ public class StorageService implements KeyValue {
             final ByteArrayOutputStream out = new ByteArrayOutputStream();
             try {
                 out.write(key.getBytes(StandardCharsets.UTF_8));
-                out.write("\r\n".getBytes(StandardCharsets.UTF_8));
+                out.write(Utils.newLine.getBytes(StandardCharsets.UTF_8));
                 out.write(value);
 
                 Message msg = new Message("REQ", "saveFile", out.toByteArray());
@@ -65,7 +65,8 @@ public class StorageService implements KeyValue {
     public Message get(String key) {
 
         Node node = getResponsibleNode(key);
-        if (!node.getId().equals(ownID))
+        // The node can have the file due to replication
+        if (!node.getId().equals(ownID) && !hasFile(key))
             return buildRedirectMessage(node);
 
         String filePath = dbFolder + key;
@@ -158,6 +159,12 @@ public class StorageService implements KeyValue {
         return folder.listFiles();
     }
 
+    private boolean hasFile(String key) {
+        String filePath = dbFolder + key;
+        File file = new File(filePath);
+        return file.exists();
+    }
+
     /**
      * This method ensures the binary search's O(log N) time complexity by using the
      * TreeMap.ceilingKey() method, which takes advantage of a Red-Black BST.
@@ -182,7 +189,7 @@ public class StorageService implements KeyValue {
     }
 
     private Message buildRedirectMessage(Node newNode) {
-        String redirectInfo = newNode.getId() + "\r\n" + newNode.getPort();
+        String redirectInfo = newNode.getId() + Utils.newLine + newNode.getPort();
         return new Message("REP", "redirect", redirectInfo.getBytes(StandardCharsets.UTF_8));
     }
 }
