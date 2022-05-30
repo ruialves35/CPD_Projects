@@ -87,7 +87,7 @@ public class MembershipService implements ClusterMembership {
 
     private void multicastJoin() {
         byte[] joinBody = buildMembershipBody();
-        Message msg = new Message("request", "join", joinBody);
+        Message msg = new Message("REQ", "join", joinBody);
 
         // Add this node information
         this.addNodeToMap(this.nodeId, this.tcpPort);
@@ -120,7 +120,7 @@ public class MembershipService implements ClusterMembership {
 
     private void multicastLeave() {
         byte[] leaveBody = buildMembershipBody();
-        Message msg = new Message("request", "leave", leaveBody);
+        Message msg = new Message("REQ", "leave", leaveBody);
 
         try {
             Sender.sendMulticast(msg.toBytes(), this.multicastIpAddr, this.multicastIPPort);
@@ -343,8 +343,8 @@ public class MembershipService implements ClusterMembership {
             Thread.sleep(randomWait);
 
             final byte[] body = this.buildMembershipMsgBody();
-            Message msg = new Message("reply", "join", body);
-            server.network.Sender.sendTCPMessage(msg.toBytes(), nodeId, tcpPort);
+            Message msg = new Message("REQ", "join", body);
+            Sender.sendTCPMessage(msg.toBytes(), nodeId, tcpPort);
         } catch (InterruptedException e) {
             e.printStackTrace();
         } catch (IOException e) {
