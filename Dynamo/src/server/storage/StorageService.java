@@ -181,17 +181,6 @@ public class StorageService implements KeyValue {
         return nodeEntry.getValue();
     }
 
-    private String createNodeFolder() {
-        String folderPath = "database/" + Utils.generateKey(ownID) + "/";
-        File folder = new File(folderPath);
-
-        if (!folder.mkdirs() && !folder.isDirectory()) {
-            System.out.println("Error creating the node's folder: " + folderPath);
-        }
-
-        return folderPath;
-    }
-
     private Message buildRedirectMessage(Node newNode) {
         String redirectInfo = newNode.getId() + "\r\n" + newNode.getPort();
         return new Message("REP", "redirect", redirectInfo.getBytes(StandardCharsets.UTF_8));

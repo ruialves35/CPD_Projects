@@ -7,7 +7,9 @@ import server.cluster.Node;
 
 import java.io.*;
 import java.nio.charset.StandardCharsets;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Map;
+import java.util.TreeMap;
 
 public class TransferService {
     private final TreeMap<String, Node> nodeMap;
@@ -19,13 +21,13 @@ public class TransferService {
         this.node = node;
     }
 
-    public boolean join() {
+    public void join() {
         String key = Utils.generateKey(this.node.getId());
         Node nextNode = this.getNextNode(key);
         String nextKey = Utils.generateKey(nextNode.getId());
         ArrayList<String> nextNodeFiles;
 
-        if (nextKey.equals(key)) return true;
+        if (nextKey.equals(key)) return;
 
         try {
             nextNodeFiles = this.getNodeFilesNames(nextNode);
@@ -38,10 +40,8 @@ public class TransferService {
             System.out.println("Sent files from " + nextNode.getId() + " to " + this.node.getId());
         } else {
             System.out.println("Error sending files to joined node");
-            return false;
         }
 
-        return true;
     }
 
     public void leave() {
@@ -153,8 +153,7 @@ public class TransferService {
         // Get the next node to store the files
         Map.Entry<String, Node> nextEntry = nodeMap.higherEntry(key);
         if (nextEntry == null) nextEntry = nodeMap.firstEntry();
-        Node nextNode = nextEntry.getValue();
-        return nextNode;
+        return nextEntry.getValue();
     }
 
 

@@ -1,18 +1,16 @@
 package server.network;
 
 import common.Message;
-import common.Utils;
 import server.cluster.MembershipService;
-import server.cluster.Node;
 import server.storage.StorageService;
 import server.storage.TransferService;
+
 import java.io.*;
-import java.net.*;
-import java.nio.Buffer;
-import java.nio.ByteBuffer;
-import java.util.*;
+import java.net.DatagramPacket;
+import java.net.InetSocketAddress;
+import java.net.MulticastSocket;
+import java.net.NetworkInterface;
 import java.util.concurrent.ExecutorService;
-import java.util.stream.Stream;
 
 public class UDPListener implements Runnable {
     private final StorageService storageService;
@@ -46,9 +44,7 @@ public class UDPListener implements Runnable {
                 socket.receive(packet);
                 try {
                     final Message message = new Message(packet.getData());
-                    executorService.submit(() -> {
-                        processEvent(message);
-                    });
+                    executorService.submit(() -> processEvent(message));
 
                     if (message.getAction().equals("leave"))
                         break;
@@ -82,9 +78,7 @@ public class UDPListener implements Runnable {
                 membershipCounter);
 
         switch (message.getAction()) {
-            case "join" -> {
-                this.membershipService.handleJoinRequest(nodeId, tcpPort, membershipCounter);
-            }
+            case "join" -> this.membershipService.handleJoinRequest(nodeId, tcpPort, membershipCounter);
             case "leave" -> {
                 // Updates view of the cluster membership and adds the log
                 this.membershipService.removeNodeFromMap(nodeId);

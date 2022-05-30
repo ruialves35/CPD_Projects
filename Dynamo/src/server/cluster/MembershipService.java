@@ -3,6 +3,7 @@ package server.cluster;
 import common.Message;
 import common.Sender;
 import common.Utils;
+
 import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -64,8 +65,6 @@ public class MembershipService implements ClusterMembership {
 
     /**
      * Updates the membershipCounter value and stores it in non-volatile memory
-     * 
-     * @param newCounter
      */
     public void updateMembershipCounter(int newCounter) {
         this.membershipCounter = newCounter;
@@ -149,8 +148,6 @@ public class MembershipService implements ClusterMembership {
     }
 
     /**
-     *
-     * @param counter
      * @return true if a node is a member of the nodeMap. False otherwise.
      */
     public static boolean isClusterMember(int counter) {
@@ -167,9 +164,6 @@ public class MembershipService implements ClusterMembership {
 
     /**
      * Adds a new node to the nodeMap.
-     * 
-     * @param newNodeId
-     * @param newNodePort
      */
     public void addNodeToMap(String newNodeId, int newNodePort) {
         String key = Utils.generateKey(newNodeId);
@@ -210,8 +204,7 @@ public class MembershipService implements ClusterMembership {
                 // Recover membership counter
                 Scanner counterScanner = new Scanner(memberCounter);
                 if (counterScanner.hasNextInt()) {
-                    int counter = counterScanner.nextInt();
-                    this.membershipCounter = counter;
+                    this.membershipCounter = counterScanner.nextInt();
                     foundCounter = true;
                 }
 
