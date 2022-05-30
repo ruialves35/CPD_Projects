@@ -28,6 +28,8 @@ public class StorageService implements KeyValue {
         if (!node.getId().equals(ownID))
             return buildRedirectMessage(node);
 
+        if (hasFile(key)) return new Message("REP", "ok", null);
+
         String filePath = dbFolder + key;
         try (FileOutputStream fos = new FileOutputStream(filePath)) {
             fos.write(value);
@@ -88,6 +90,9 @@ public class StorageService implements KeyValue {
         if (!node.getId().equals(ownID))
             return buildRedirectMessage(node);
 
+        // TODO Tombstones
+        if (!hasFile(key)) return new Message("REP", "ok", null);
+
         String filePath = dbFolder + key;
         File file = new File(filePath);
         if (!file.delete()) {
@@ -139,6 +144,7 @@ public class StorageService implements KeyValue {
     public Message saveFile(String key, byte[] file) {
 
         String filePath = dbFolder + key;
+        if (hasFile(key)) return new Message("REP", "ok", null);
 
         Message reply;
         try (FileOutputStream fos = new FileOutputStream(filePath)) {
