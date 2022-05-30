@@ -89,6 +89,10 @@ public class MembershipService implements ClusterMembership {
         byte[] joinBody = buildMembershipBody();
         Message msg = new Message("request", "join", joinBody);
 
+        // Add this node information
+        this.addNodeToMap(this.nodeId, this.tcpPort);
+        this.addLog(this.nodeId, this.membershipCounter);
+
         while (this.retransmissionCounter < maxRetransmissions) {
             int elapsedTime = 0;
             try {

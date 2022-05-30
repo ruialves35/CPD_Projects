@@ -12,16 +12,20 @@ import java.util.*;
 public class TransferService {
     private final TreeMap<String, Node> nodeMap;
     private final StorageService storageService;
-    public TransferService(TreeMap<String, Node> nodeMap, StorageService storageService) {
+    private final Node node;
+    public TransferService(TreeMap<String, Node> nodeMap, StorageService storageService, Node node) {
         this.nodeMap = nodeMap;
         this.storageService = storageService;
+        this.node = node;
     }
 
-    public boolean join(Node node) {
-        String key = Utils.generateKey(node.getId());
+    public boolean join() {
+        String key = Utils.generateKey(this.node.getId());
         Node nextNode = this.getNextNode(key);
         String nextKey = Utils.generateKey(nextNode.getId());
         ArrayList<String> nextNodeFiles;
+
+        if (nextKey.equals(key)) return true;
 
         try {
             nextNodeFiles = this.getNodeFilesNames(nextNode);
@@ -30,8 +34,8 @@ public class TransferService {
             throw new RuntimeException(e);
         }
 
-        if (processJoin(nextNodeFiles, node, nextNode)) {
-            System.out.println("Sent files from " + nextNode.getId() + " to " + node.getId());
+        if (processJoin(nextNodeFiles, this.node, nextNode)) {
+            System.out.println("Sent files from " + nextNode.getId() + " to " + this.node.getId());
         } else {
             System.out.println("Error sending files to joined node");
             return false;
@@ -40,8 +44,8 @@ public class TransferService {
         return true;
     }
 
-    public void leave(Node node) {
-        String key = Utils.generateKey(node.getId());
+    public void leave() {
+        String key = Utils.generateKey(this.node.getId());
 
         String folderPath = "database/" + key + "/";
         File folder = new File(folderPath);
@@ -149,9 +153,7 @@ public class TransferService {
         // Get the next node to store the files
         Map.Entry<String, Node> nextEntry = nodeMap.higherEntry(key);
         if (nextEntry == null) nextEntry = nodeMap.firstEntry();
-
         Node nextNode = nextEntry.getValue();
-
         return nextNode;
     }
 
