@@ -50,6 +50,7 @@ public class Store {
         String action = myObj.nextLine(); // Read user input
         if (action.equals("leave")) {
             try {
+                transferService.leave();
                 membershipService.leave();
             } catch (RuntimeException re) {
                 System.err.println(re.getMessage());
