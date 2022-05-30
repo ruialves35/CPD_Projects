@@ -101,7 +101,7 @@ public class StorageService implements KeyValue {
             if (node.getId().equals(ownID)) break; // Not enough nodes available
 
             try {
-                Message msg = new Message("REQ", "deleteFile", key.getBytes(StandardCharsets.UTF_8));
+                Message msg = new Message("REQ", "getAndDelete", key.getBytes(StandardCharsets.UTF_8));
 
                 // TODO What to do in case of error reply? What if there's no reply (crash)?
                 // TODO It's stuck waiting for a response. Use thread pool?
