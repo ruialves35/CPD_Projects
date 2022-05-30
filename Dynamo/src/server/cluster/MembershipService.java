@@ -17,7 +17,7 @@ public class MembershipService implements ClusterMembership {
 
     private final int tcpPort;
     private final String folderPath;
-    private int membershipCounter = 0;  // NEEDS TO BE STORED IN NON-VOLATILE MEMORY TO SURVIVE NODE CRASHES
+    private int membershipCounter = 0; // NEEDS TO BE STORED IN NON-VOLATILE MEMORY TO SURVIVE NODE CRASHES
     private static final int maxRetransmissions = 3;
     private int retransmissionCounter = 0;
     private final HashSet<String> membershipReplyNodes;
@@ -38,7 +38,7 @@ public class MembershipService implements ClusterMembership {
     @Override
     public void join() {
         if (this.membershipCounter == 0 || !isClusterMember(this.membershipCounter)) {
-            if (this.membershipCounter != 0)    // Edge case for the first join
+            if (this.membershipCounter != 0) // Edge case for the first join
                 this.updateMembershipCounter(this.membershipCounter + 1);
             this.addLog(this.nodeId, this.membershipCounter);
             this.multicastJoin();
@@ -64,6 +64,7 @@ public class MembershipService implements ClusterMembership {
 
     /**
      * Updates the membershipCounter value and stores it in non-volatile memory
+     * 
      * @param newCounter
      */
     public void updateMembershipCounter(int newCounter) {
@@ -87,6 +88,10 @@ public class MembershipService implements ClusterMembership {
     private void multicastJoin() {
         byte[] joinBody = buildMembershipBody();
         Message msg = new Message("request", "join", joinBody);
+
+        // Add this node information
+        this.addNodeToMap(this.nodeId, this.tcpPort);
+        this.addLog(this.nodeId, this.membershipCounter);
 
         while (this.retransmissionCounter < maxRetransmissions) {
             int elapsedTime = 0;
@@ -162,6 +167,7 @@ public class MembershipService implements ClusterMembership {
 
     /**
      * Adds a new node to the nodeMap.
+     * 
      * @param newNodeId
      * @param newNodePort
      */
@@ -175,6 +181,7 @@ public class MembershipService implements ClusterMembership {
 
     /***
      * Removes a node from the map with a specific id
+     * 
      * @param oldNodeId nodeId
      */
     public void removeNodeFromMap(String oldNodeId) {
@@ -188,7 +195,8 @@ public class MembershipService implements ClusterMembership {
         if (!folder.mkdirs() && !folder.isDirectory()) {
             System.out.println("Error creating the node's folder: " + this.folderPath);
         } else {
-            // The membership log should be updated with the one received by other nodes already belonging to the system
+            // The membership log should be updated with the one received by other nodes
+            // already belonging to the system
             this.initializeNodeFiles();
         }
     }
@@ -216,7 +224,6 @@ public class MembershipService implements ClusterMembership {
                 counterWriter.close();
             }
 
-
             File memberLog = new File(this.folderPath + Utils.membershipLogFileName);
 
             // Set initial log to be the current node
@@ -229,14 +236,15 @@ public class MembershipService implements ClusterMembership {
     }
 
     /**
-     * Adds a new log to the beginning of the membership log removing existing logs for that nodeId
+     * Adds a new log to the beginning of the membership log removing existing logs
+     * for that nodeId
      */
     public void addLog(String newNodeId, int newMemberCounter) {
         try {
             File file = new File(this.folderPath + Utils.membershipLogFileName);
             boolean isDeprecatedLog = false;
 
-            FileReader fr = new FileReader(file);   //reads the file
+            FileReader fr = new FileReader(file); // reads the file
             BufferedReader br = new BufferedReader(fr);
             String line;
 
@@ -263,7 +271,8 @@ public class MembershipService implements ClusterMembership {
                             return !newNodeId.equals(rowId);
                         }).toList());
 
-                Files.write(file.toPath(), filteredFile, StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING);
+                Files.write(file.toPath(), filteredFile, StandardOpenOption.WRITE,
+                        StandardOpenOption.TRUNCATE_EXISTING);
 
                 // If the newMemberCounter is even, it is already added by the nodeMap received
                 if (!isClusterMember(newMemberCounter)) {
@@ -290,7 +299,8 @@ public class MembershipService implements ClusterMembership {
             File file = new File(this.folderPath + Utils.membershipLogFileName);
             Scanner myReader = new Scanner(file);
             for (int i = 0; i < Utils.numLogEvents; i++) {
-                if (!myReader.hasNextLine()) break;
+                if (!myReader.hasNextLine())
+                    break;
                 String line = myReader.nextLine();
                 byteOut.write(line.getBytes(StandardCharsets.UTF_8));
                 byteOut.write(Utils.newLine.getBytes(StandardCharsets.UTF_8));
@@ -358,7 +368,7 @@ public class MembershipService implements ClusterMembership {
 
             while ((line = br.readLine()) != null) {
                 if (line.isEmpty())
-                    break;  // Reached the end of membership log
+                    break; // Reached the end of membership log
                 membershipLogs.add(line);
             }
 
@@ -366,7 +376,7 @@ public class MembershipService implements ClusterMembership {
                 String[] data = line.split(" ");
                 String newNodeId = data[0];
                 int newNodePort = Integer.parseInt(data[1]);
-                this.addNodeToMap(newNodeId, newNodePort);    // Check what happens when adding node that already exists
+                this.addNodeToMap(newNodeId, newNodePort); // Check what happens when adding node that already exists
             }
         } catch (IOException e) {
             throw new RuntimeException(e);

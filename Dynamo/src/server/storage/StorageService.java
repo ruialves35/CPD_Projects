@@ -4,10 +4,7 @@ import common.Message;
 import common.Utils;
 import server.cluster.Node;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.IOException;
+import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import java.util.TreeMap;
@@ -42,6 +39,7 @@ public class StorageService implements KeyValue {
 
     @Override
     public Message get(String key) {
+
         Node node = getResponsibleNode(key);
         if (!node.getId().equals(ownID))
             return buildRedirectMessage(node);
@@ -73,6 +71,50 @@ public class StorageService implements KeyValue {
         }
 
         return new Message("REP", "ok", null);
+    }
+
+    public Message getAndDelete(String key) {
+        String filePath = dbFolder + key;
+        byte[] value;
+
+        try (FileInputStream fis = new FileInputStream(filePath)) {
+            value = fis.readAllBytes();
+        } catch (IOException e) {
+            System.out.println("Error opening file in get operation: " + filePath);
+            return new Message("REP", "error", null);
+        }
+
+        File file = new File(filePath);
+        if (file.delete()) {
+            System.out.println("Successfully Deleted file: " + file.getName() + " from node: " + dbFolder );
+        } else {
+            System.out.println("Failed to delete the file.");
+        }
+
+        return new Message("REP", "ok", value);
+    }
+
+    public Message saveFile(String key, byte[] file) {
+
+        String filePath = dbFolder + key;
+
+        Message reply;
+        try (FileOutputStream fos = new FileOutputStream(filePath)) {
+            fos.write(file);
+            reply = new Message("REP", "ok", null);
+
+        } catch (IOException e) {
+            System.out.println("Error opening file in put operation: " + filePath);
+            reply = new Message("REP", "error", null);
+        }
+
+        return reply;
+    }
+
+    public File[] getFiles(String key) {
+        String folderPath = "database/" + key + "/";
+        File folder = new File(folderPath);
+        return folder.listFiles();
     }
 
     /**
