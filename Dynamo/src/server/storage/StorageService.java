@@ -165,23 +165,12 @@ public class StorageService implements KeyValue {
         return folder.listFiles();
     }
 
-    private boolean hasFile(String key) {
-        String filePath = dbFolder + key;
-        File file = new File(filePath);
-        return file.exists();
+    public String getDbFolder() {
+        return dbFolder;
     }
 
-    /**
-     * This method ensures the binary search's O(log N) time complexity by using the
-     * TreeMap.ceilingKey() method, which takes advantage of a Red-Black BST.
-     */
-    private Node getResponsibleNode(String key) {
-        Map.Entry<String, Node> nodeEntry = nodeMap.ceilingEntry(key);
-
-        // No node with greater key -> Go to the start of the circle (first node)
-        if (nodeEntry == null) nodeEntry = nodeMap.firstEntry();
-
-        return nodeEntry.getValue();
+    public int getNumberOfNodes() {
+        return nodeMap.size();
     }
 
     public Node getNextNode(Node prevNode) {
@@ -204,12 +193,27 @@ public class StorageService implements KeyValue {
         return nodeEntry.getValue();
     }
 
+    private boolean hasFile(String key) {
+        String filePath = dbFolder + key;
+        File file = new File(filePath);
+        return file.exists();
+    }
+
+    /**
+     * This method ensures the binary search's O(log N) time complexity by using the
+     * TreeMap.ceilingKey() method, which takes advantage of a Red-Black BST.
+     */
+    private Node getResponsibleNode(String key) {
+        Map.Entry<String, Node> nodeEntry = nodeMap.ceilingEntry(key);
+
+        // No node with greater key -> Go to the start of the circle (first node)
+        if (nodeEntry == null) nodeEntry = nodeMap.firstEntry();
+
+        return nodeEntry.getValue();
+    }
+
     private Message buildRedirectMessage(Node newNode) {
         String redirectInfo = newNode.getId() + Utils.newLine + newNode.getPort();
         return new Message("REP", "redirect", redirectInfo.getBytes(StandardCharsets.UTF_8));
-    }
-
-    public String getDbFolder() {
-        return dbFolder;
     }
 }
