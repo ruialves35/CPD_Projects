@@ -27,7 +27,7 @@ public class Store {
         final MembershipService membershipService = new MembershipService(multicastIPAddr, multicastIPPort, nodeId,
                 storePort);
         final StorageService storageService = new StorageService(membershipService.getNodeMap(), nodeId);
-        final TransferService transferService = new TransferService(membershipService.getNodeMap(), storageService, new Node(nodeId, storePort));
+        final TransferService transferService = new TransferService(storageService, new Node(nodeId, storePort));
         final ExecutorService executorService = Executors.newCachedThreadPool();
 
         try {

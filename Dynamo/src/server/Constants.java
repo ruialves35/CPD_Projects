@@ -8,4 +8,5 @@ public class Constants {
     public static final int timeoutTime = 3000;
     public static final int timeoutStepTime = 500;
     public static final int numMembershipMessages = 3;
+    public static final int replicationFactor = 3;
 }

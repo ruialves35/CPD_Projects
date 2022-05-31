@@ -184,7 +184,7 @@ public class StorageService implements KeyValue {
         return nodeEntry.getValue();
     }
 
-    private Node getNextNode(Node prevNode) {
+    public Node getNextNode(Node prevNode) {
         String prevKey = Utils.generateKey(prevNode.getId());
         Map.Entry<String, Node> nodeEntry = nodeMap.higherEntry(prevKey);
 
@@ -194,8 +194,22 @@ public class StorageService implements KeyValue {
         return nodeEntry.getValue();
     }
 
+    public Node getPreviousNode(Node node) {
+        String key = Utils.generateKey(node.getId());
+        Map.Entry<String, Node> nodeEntry = nodeMap.lowerEntry(key);
+
+        // No node with lower key -> Go to the end of the circle (last node)
+        if (nodeEntry == null) nodeEntry = nodeMap.lastEntry();
+
+        return nodeEntry.getValue();
+    }
+
     private Message buildRedirectMessage(Node newNode) {
         String redirectInfo = newNode.getId() + Utils.newLine + newNode.getPort();
         return new Message("REP", "redirect", redirectInfo.getBytes(StandardCharsets.UTF_8));
+    }
+
+    public String getDbFolder() {
+        return dbFolder;
     }
 }
