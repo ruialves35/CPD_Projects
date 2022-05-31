@@ -159,10 +159,9 @@ public class StorageService implements KeyValue {
         return reply;
     }
 
-    public File[] getFiles(String key) {
-        String folderPath = "database/" + key + "/";
-        File folder = new File(folderPath);
-        return folder.listFiles();
+    public String[] getFiles() {
+        File folder = new File(dbFolder);
+        return folder.list();
     }
 
     public String getDbFolder() {

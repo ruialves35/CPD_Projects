@@ -2,7 +2,6 @@ package server.storage;
 
 import common.Message;
 import common.Sender;
-import common.Utils;
 import server.Constants;
 import server.cluster.Node;
 
@@ -21,35 +20,32 @@ public class TransferService {
     }
 
     public void join() {
-        Node nextNode = storageService.getNextNode(this.node);
-        String key = Utils.generateKey(this.node.getId());
-        String nextKey = Utils.generateKey(nextNode.getId());
-
-        if (nextKey.equals(key)) return; // The node is alone
-
-        ArrayList<String> nextNodeFiles = this.getNodeFileNames(nextNode);
-        ArrayList<String> filesToTransfer = filterResponsibleFiles(nextNodeFiles, this.node);
-        getFiles(filesToTransfer, nextNode, false);
-
         // Cluster is not fulfilling the replication factor -> replicate all files
         if (Constants.replicationFactor >= storageService.getNumberOfNodes()) {
-            Node curNode = nextNode;
+            Node curNode = storageService.getNextNode(this.node);
+            boolean copyOwnFiles = true;
             while (!curNode.getId().equals(this.node.getId())) {
                 ArrayList<String> curNodeFiles = this.getNodeFileNames(curNode);
-                filesToTransfer = filterResponsibleFiles(curNodeFiles, curNode);
+                if (copyOwnFiles) {
+                    ArrayList<String> filesToTransfer = filterResponsibleFiles(curNodeFiles, this.node);
+                    getFiles(filesToTransfer, curNode, false);
+                    copyOwnFiles = false;
+                }
+
+                ArrayList<String> filesToTransfer = filterResponsibleFiles(curNodeFiles, curNode);
                 getFiles(filesToTransfer, curNode, false);
                 curNode = storageService.getNextNode(curNode);
             }
             return;
         }
 
-        // Transfer replicas to the new node
-        Node responsibleNode = storageService.getPreviousNode(this.node);
+        // Transfer replicas to the new node (including own files)
+        Node responsibleNode = this.node;
         Node replicaNode = this.node;
-        for (int i = 0; i < Constants.replicationFactor - 1; ++i)
+        for (int i = 0; i < Constants.replicationFactor; ++i)
             replicaNode = this.storageService.getNextNode(replicaNode);
 
-        for (int i = 0; i < Constants.replicationFactor - 1; ++i) {
+        for (int i = 0; i < Constants.replicationFactor; ++i) {
             ArrayList<String> replicaNodeFiles = this.getNodeFileNames(replicaNode);
             ArrayList<String> filesToReplicate = filterResponsibleFiles(replicaNodeFiles, responsibleNode);
             getFiles(filesToReplicate, replicaNode, true);
@@ -143,7 +139,7 @@ public class TransferService {
      */
     private ArrayList<String> getNodeFileNames(Node node) {
         try {
-            Message message = new Message("REQ", "getFiles", Utils.generateKey(node.getId()).getBytes(StandardCharsets.UTF_8));
+            Message message = new Message("REQ", "getFiles", null);
             Message reply = new Message(Sender.sendTCPMessage(message.toBytes(), node.getId(), node.getPort()));
             final BufferedReader reader = new BufferedReader(new InputStreamReader(new ByteArrayInputStream(reply.getBody())));
 
@@ -153,7 +149,7 @@ public class TransferService {
                 fileNames.add(line);
             }
 
-            return filterResponsibleFiles(fileNames, node);
+            return fileNames;
         } catch (IOException e) {
             System.out.println("Error getting files from node: " + node.getId());
             throw new RuntimeException(e);

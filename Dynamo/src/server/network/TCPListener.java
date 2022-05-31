@@ -100,14 +100,12 @@ public class TCPListener implements Runnable {
                 reply = storageService.getAndDelete(key);
             }
             case "getFiles" -> {
-                String key = reader.readLine();
-
-                File[] nodeFiles = storageService.getFiles(key);
+                String[] nodeFiles = storageService.getFiles();
                 StringBuilder sb = new StringBuilder();
 
                 if (nodeFiles != null) {
-                    for (File file : nodeFiles) {
-                        sb.append(file.getName()).append("\r\n");
+                    for (String fileName : nodeFiles) {
+                        sb.append(fileName).append("\r\n");
                     }
                 }
 
