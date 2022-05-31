@@ -203,7 +203,7 @@ public class StorageService implements KeyValue {
      * This method ensures the binary search's O(log N) time complexity by using the
      * TreeMap.ceilingKey() method, which takes advantage of a Red-Black BST.
      */
-    private Node getResponsibleNode(String key) {
+    public Node getResponsibleNode(String key) {
         Map.Entry<String, Node> nodeEntry = nodeMap.ceilingEntry(key);
 
         // No node with greater key -> Go to the start of the circle (first node)

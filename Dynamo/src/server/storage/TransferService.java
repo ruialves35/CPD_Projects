@@ -161,17 +161,14 @@ public class TransferService {
     }
 
     private ArrayList<String> filterResponsibleFiles(ArrayList<String> fileNames, Node node) {
-        Node prevNode = storageService.getPreviousNode(node);
-        String prevNodeKey = Utils.generateKey(prevNode.getId());
-        String nodeKey = Utils.generateKey(node.getId());
-        for (int i = 0; i < fileNames.size(); ++i) {
-            if (fileNames.get(i).compareTo(nodeKey) > 0 || fileNames.get(i).compareTo(prevNodeKey) < 0) {
-                fileNames.remove(i);
-                --i;
+        final ArrayList<String> filteredFileNames = new ArrayList<>();
+        for (String fileName : fileNames) {
+            if (storageService.getResponsibleNode(fileName).getId().equals(node.getId())) {
+                filteredFileNames.add(fileName);
             }
         }
 
-        return fileNames;
+        return filteredFileNames;
     }
 
 }
