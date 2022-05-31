@@ -3,12 +3,18 @@ package client;
 import common.Message;
 import common.Sender;
 import common.Utils;
+import example.Hello;
+import server.Server;
 
 import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.rmi.NotBoundException;
+import java.rmi.RemoteException;
+import java.rmi.registry.LocateRegistry;
+import java.rmi.registry.Registry;
 
 public class TestClient {
     public static void main(String[] args) {
@@ -33,9 +39,21 @@ public class TestClient {
             System.exit(1);
         }
 
-        TestClient client = new TestClient();
+        try {
+            Registry registry = LocateRegistry.getRegistry(nodeAP);
+            Server stub = (Server) registry.lookup("Server");
 
-            if (operation.equals("join") || operation.equals("leave"))
+            TestClient client = new TestClient();
+
+            switch(operation) {
+                case "join" -> stub.join();
+                case "leave" -> stub.leave();
+                case "put" -> stub.put(operand);
+                case "get" -> stub.get(operand);
+                case "delete" -> stub.delete(operand);
+            }
+
+            /* if (operation.equals("join") || operation.equals("leave"))
                 client.membershipOperation(nodeAP, operation);
             else {
                 try {
@@ -45,7 +63,11 @@ public class TestClient {
                     System.out.println("Client sided error:");
                     e.printStackTrace();
                 }
-            }
+            } */
+
+        } catch (RemoteException | NotBoundException e) {
+            throw new RuntimeException(e);
+        }
 
     }
 
