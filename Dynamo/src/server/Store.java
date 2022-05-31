@@ -10,12 +10,13 @@ import server.storage.TransferService;
 
 import java.io.IOException;
 import java.net.*;
+import java.rmi.RemoteException;
 import java.util.Scanner;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
-public class Store {
+public class Store implements Server{
     public static void main(String[] args) {
         if (args.length != 4) {
             System.out.println("Wrong number of arguments. Please invoke the program as:");
@@ -96,5 +97,30 @@ public class Store {
                 // Clear ExecutorService threads?
             }
         }
+    }
+
+    @Override
+    public boolean join() throws RemoteException {
+        return false;
+    }
+
+    @Override
+    public boolean leave() throws RemoteException {
+        return false;
+    }
+
+    @Override
+    public boolean put(String filePath) throws RemoteException {
+        return false;
+    }
+
+    @Override
+    public boolean get(String fileKey) throws RemoteException {
+        return false;
+    }
+
+    @Override
+    public boolean delete(String fileKey) throws RemoteException {
+        return false;
     }
 }
