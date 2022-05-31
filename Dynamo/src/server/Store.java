@@ -1,5 +1,7 @@
 package server;
 
+import common.Message;
+import common.Utils;
 import example.Hello;
 import server.cluster.MembershipService;
 import server.cluster.Node;
@@ -9,9 +11,13 @@ import server.storage.StorageService;
 import server.storage.TombstoneManager;
 import server.storage.TransferService;
 
+import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.lang.reflect.Member;
 import java.net.*;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.rmi.AlreadyBoundException;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
@@ -144,17 +150,30 @@ public class Store implements Server{
     }
 
     @Override
-    public boolean put(String filePath) throws RemoteException {
-        return false;
+    public String put(String filePath) throws RemoteException {
+        File file = new File(filePath);
+        String fileKey = Utils.generateKey(file.getName());
+
+        try {
+            byte[] data = Files.readAllBytes(Paths.get(filePath));
+            storageService.put(fileKey, data);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+
+        return fileKey;
     }
 
     @Override
-    public boolean get(String fileKey) throws RemoteException {
-        return false;
+    public byte[] get(String fileKey) throws RemoteException {
+        Message fileMessage  = storageService.get(fileKey);
+        return fileMessage.getBody();
     }
 
     @Override
     public boolean delete(String fileKey) throws RemoteException {
-        return false;
+        storageService.delete(fileKey);
+
+        return true;
     }
 }

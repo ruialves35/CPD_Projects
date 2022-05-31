@@ -41,16 +41,16 @@ public class TestClient {
 
         try {
             Registry registry = LocateRegistry.getRegistry(nodeAP);
-            Server stub = (Server) registry.lookup("Server");
+            Server serverStub = (Server) registry.lookup("Server");
 
             TestClient client = new TestClient();
 
             switch(operation) {
-                case "join" -> stub.join();
-                case "leave" -> stub.leave();
-                case "put" -> stub.put(operand);
-                case "get" -> stub.get(operand);
-                case "delete" -> stub.delete(operand);
+                case "join" -> serverStub.join();
+                case "leave" -> serverStub.leave();
+                case "put" -> serverStub.put(operand);
+                case "get" -> handleGet(serverStub, operand);
+                case "delete" -> serverStub.delete(operand);
             }
 
             /* if (operation.equals("join") || operation.equals("leave"))
@@ -66,6 +66,24 @@ public class TestClient {
             } */
 
         } catch (RemoteException | NotBoundException e) {
+            throw new RuntimeException(e);
+        }
+
+    }
+
+    private static void handleGet(Server serverStub, String fileKey) throws RemoteException {
+        byte[] bytes = serverStub.get(fileKey);
+
+        InputStream is = new ByteArrayInputStream(bytes);
+        BufferedReader br = new BufferedReader(new InputStreamReader(is));
+
+        String line;
+        System.out.println("Got file: \n");
+        try {
+            while ((line = br.readLine()) != null) {
+                System.out.println(line);
+            }
+        } catch(IOException e) {
             throw new RuntimeException(e);
         }
 

@@ -7,7 +7,7 @@ public interface Server extends Remote {
     boolean join() throws RemoteException;
     boolean leave() throws RemoteException;
 
-    boolean put(String filePath) throws RemoteException;
-    boolean get(String fileKey) throws RemoteException;
+    String put(String filePath) throws RemoteException;
+    byte[] get(String fileKey) throws RemoteException;
     boolean delete(String fileKey) throws RemoteException;
 }
