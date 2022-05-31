@@ -1,5 +1,6 @@
 package server;
 
+import example.Hello;
 import server.cluster.MembershipService;
 import server.cluster.Node;
 import server.network.TCPListener;
@@ -9,14 +10,42 @@ import server.storage.TombstoneManager;
 import server.storage.TransferService;
 
 import java.io.IOException;
+import java.lang.reflect.Member;
 import java.net.*;
+import java.rmi.AlreadyBoundException;
 import java.rmi.RemoteException;
+import java.rmi.registry.LocateRegistry;
+import java.rmi.registry.Registry;
+import java.rmi.server.UnicastRemoteObject;
 import java.util.Scanner;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
 public class Store implements Server{
+    private final String multicastIPAddr;
+    private final int multicastIPPort;
+    private final String nodeId;
+    private final int storePort;
+    private final MembershipService membershipService;
+    private final StorageService storageService;
+    private final TransferService transferService;
+
+    private ExecutorService executorService;
+
+    private ServerSocket serverSocket = null;
+    private MulticastSocket multicastSocket = null;
+
+    public Store(String multicastIPAddr, int multicastIPPort, String nodeId, int storePort) {
+        this.multicastIPAddr = multicastIPAddr;
+        this.multicastIPPort = multicastIPPort;
+        this.nodeId = nodeId;
+        this.storePort = storePort;
+
+        this.membershipService = new MembershipService(multicastIPAddr, multicastIPPort, nodeId, storePort);
+        this.storageService = new StorageService(membershipService.getNodeMap(), nodeId, executorService);
+        this.transferService = new TransferService(membershipService.getNodeMap(), storageService, new Node(nodeId, storePort));
+    }
     public static void main(String[] args) {
         if (args.length != 4) {
             System.out.println("Wrong number of arguments. Please invoke the program as:");
@@ -29,16 +58,25 @@ public class Store implements Server{
         final String nodeId = args[2];
         final int storePort = Integer.parseInt(args[3]);
 
-        final ExecutorService executorService = Executors.newCachedThreadPool();
+        try {
+            LocateRegistry.createRegistry(1099);
 
-        final MembershipService membershipService = new MembershipService(multicastIPAddr, multicastIPPort, nodeId,
-                storePort);
-        final StorageService storageService = new StorageService(membershipService.getNodeMap(), nodeId, executorService);
-        final TransferService transferService = new TransferService(membershipService.getNodeMap(), storageService, new Node(nodeId, storePort));
-        final ExecutorService executorService = Executors.newCachedThreadPool();     // TODO: CHANGED TO newFixedThreadPool?
+            Store store = new Store(multicastIPAddr, multicastIPPort, nodeId, storePort);
+            Server stub = (Server) UnicastRemoteObject.exportObject(store, 0);
 
-        ServerSocket serverSocket = null;
-        MulticastSocket multicastSocket = null;
+            // Bind the remote object's stub in the registry
+            Registry registry = LocateRegistry.getRegistry();
+            registry.bind("Server", stub);
+
+            System.out.println("Server ready");
+        } catch (RemoteException | AlreadyBoundException e) {
+            System.err.println("Server exception: " + e.toString());
+            e.printStackTrace();
+        }
+    }
+
+    @Override
+    public boolean join() throws RemoteException {
         try {
             // THERE ARE 2 SOLUTIONS: THIS ONE or LEAVING THE THREADS RUNNING BUT NOT PROCESSING THE EVENTS
             try {
@@ -48,6 +86,7 @@ public class Store implements Server{
                 throw new RuntimeException(e);
             }
 
+            executorService = Executors.newFixedThreadPool(10);    // TODO: Check number of threads
             executorService.submit(new TCPListener(storageService, membershipService, transferService, executorService, serverSocket));
 
 
@@ -66,47 +105,42 @@ public class Store implements Server{
             // Clear ExecutorService threads?
         }
 
-        // THIS IS FOR TESTING THE LEAVE
-        Scanner myObj = new Scanner(System.in); // Create a Scanner object
-        System.out.println("> Enter action");
 
-        String action = myObj.nextLine(); // Read user input
-        if (action.equals("leave")) {
-            try {
-                try {
-                    if (serverSocket != null) serverSocket.close();
-                    if (multicastSocket != null) {
-                        InetSocketAddress group = new InetSocketAddress(multicastIPAddr, multicastIPPort);
-                        NetworkInterface netInf = NetworkInterface.getByIndex(0);
-                        multicastSocket.leaveGroup(group, netInf);
-                        multicastSocket.close();
-                    }
-                    executorService.shutdownNow();
-                    if (executorService.awaitTermination(1, TimeUnit.SECONDS)) {
-                        System.out.println("Executor terminated.");
-                    } else {
-                        System.out.println("Executor still running");
-                    }
-                } catch (InterruptedException | IOException e) {
-                    throw new RuntimeException(e);
-                }
-                transferService.leave();
-                membershipService.leave();
-            } catch (RuntimeException re) {
-                System.err.println(re.getMessage());
-                // Clear ExecutorService threads?
-            }
-        }
-    }
-
-    @Override
-    public boolean join() throws RemoteException {
-        return false;
+        return true;
     }
 
     @Override
     public boolean leave() throws RemoteException {
-        return false;
+        try {
+            try {
+                if (serverSocket != null) {
+                    serverSocket.close();
+                    serverSocket = null;
+                }
+                if (multicastSocket != null) {
+                    InetSocketAddress group = new InetSocketAddress(multicastIPAddr, multicastIPPort);
+                    NetworkInterface netInf = NetworkInterface.getByIndex(0);
+                    multicastSocket.leaveGroup(group, netInf);
+                    multicastSocket.close();
+                    multicastSocket = null;
+                }
+                executorService.shutdownNow();
+                if (executorService.awaitTermination(1, TimeUnit.SECONDS)) {
+                    System.out.println("Executor terminated.");
+                } else {
+                    System.out.println("Executor still running");
+                }
+            } catch (InterruptedException | IOException e) {
+                throw new RuntimeException(e);
+            }
+            transferService.leave();
+            membershipService.leave();
+        } catch (RuntimeException re) {
+            System.err.println(re.getMessage());
+            // Clear ExecutorService threads?
+        }
+
+        return true;
     }
 
     @Override
