@@ -3,6 +3,7 @@ package server.storage;
 import common.Message;
 import common.Sender;
 import common.Utils;
+import server.Constants;
 import server.cluster.Node;
 
 import java.io.*;
@@ -11,7 +12,6 @@ import java.util.Map;
 import java.util.TreeMap;
 
 public class StorageService implements KeyValue {
-    private static final int REPLICATION_FACTOR = 3;
     private final TreeMap<String, Node> nodeMap;
     private final String ownID;
     private final String dbFolder;
@@ -39,7 +39,7 @@ public class StorageService implements KeyValue {
         }
 
         // Send the file to the following nodes (Replication)
-        for (int i = 1; i < REPLICATION_FACTOR; ++i) {
+        for (int i = 1; i < Constants.replicationFactor; ++i) {
             node = getNextNode(node);
             if (node.getId().equals(ownID)) break; // Not enough nodes available
 
@@ -101,7 +101,7 @@ public class StorageService implements KeyValue {
         }
 
         // Tell the following nodes to delete the file (Replication)
-        for (int i = 1; i < REPLICATION_FACTOR; ++i) {
+        for (int i = 1; i < Constants.replicationFactor; ++i) {
             node = getNextNode(node);
             if (node.getId().equals(ownID)) break; // Not enough nodes available
 

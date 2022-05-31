@@ -3,6 +3,7 @@ package server.storage;
 import common.Message;
 import common.Sender;
 import common.Utils;
+import server.Constants;
 import server.cluster.Node;
 
 import java.io.*;
@@ -50,6 +51,10 @@ public class TransferService {
         String folderPath = "database/" + key + "/";
         File folder = new File(folderPath);
         File[] nodeFiles = folder.listFiles();
+
+        for (int i = 0; i < Constants.replicationFactor; ++i) {
+
+        }
 
         Node nextNode = this.getNextNode(key);
 
