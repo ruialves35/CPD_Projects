@@ -166,13 +166,15 @@ public class StorageService implements KeyValue {
 
     public Message safeDelete(String key) {
         String filePath = dbFolder + "/tombstones/" + key;
-        try (FileOutputStream fos = new FileOutputStream(filePath)) {
-            DataOutputStream dos = new DataOutputStream(fos);
-            dos.writeLong(System.currentTimeMillis());
+        File tombstoneFile = new File(filePath);
+
+        try {
+            //noinspection ResultOfMethodCallIgnored
+            tombstoneFile.createNewFile();
             return new Message("REP", "ok", null);
 
         } catch (IOException e) {
-            System.out.println("Error opening file in put operation: " + filePath);
+            System.out.println("Error creating tombstone file: " + filePath);
             return new Message("REP", "error", null);
         }
     }

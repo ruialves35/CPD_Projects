@@ -5,6 +5,7 @@ import server.cluster.Node;
 import server.network.TCPListener;
 import server.network.UDPListener;
 import server.storage.StorageService;
+import server.storage.TombstoneManager;
 import server.storage.TransferService;
 
 import java.util.Scanner;
@@ -38,6 +39,7 @@ public class Store {
             transferService.join();
             executorService
                     .submit(new UDPListener(storageService, membershipService, transferService, executorService));
+            executorService.submit(new TombstoneManager(storageService.getDbFolder()));
         } catch (RuntimeException re) {
             System.err.println(re.getMessage());
             // Clear ExecutorService threads?
