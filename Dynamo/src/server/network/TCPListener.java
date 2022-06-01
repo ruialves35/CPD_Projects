@@ -60,7 +60,7 @@ public class TCPListener implements Runnable {
                     }
                 });
 
-                if (message.getAction().equals("leave"))
+                if (message.getAction().equals("exit"))
                     break;
             }
             serverSocket.close();

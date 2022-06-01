@@ -56,23 +56,6 @@ public class TestClient {
         }
     }
 
-    private static void handleGet(Server serverStub, String fileKey) throws RemoteException {
-        byte[] bytes = serverStub.get(fileKey);
-
-        InputStream is = new ByteArrayInputStream(bytes);
-        BufferedReader br = new BufferedReader(new InputStreamReader(is));
-
-        String line;
-        System.out.println("Got file: \n");
-        try {
-            while ((line = br.readLine()) != null) {
-                System.out.println(line);
-            }
-        } catch(IOException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
     private static void keyValueOperation(String nodeIP, int nodePort, String operation, String operand) throws IOException {
         Message msg = buildKeyValueRequest(operand, operation);
         Message reply;

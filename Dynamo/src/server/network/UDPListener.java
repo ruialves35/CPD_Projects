@@ -46,7 +46,7 @@ public class UDPListener implements Runnable {
                     final Message message = new Message(packet.getData());
                     executorService.submit(() -> processEvent(message));
 
-                    if (message.getAction().equals("leave"))
+                    if (message.getAction().equals("exit"))
                         break;
                 } catch (IOException e) {
                     System.err.println(e.getMessage());
@@ -82,9 +82,7 @@ public class UDPListener implements Runnable {
         switch (message.getAction()) {
             case "join" -> this.membershipService.handleJoinRequest(nodeId, tcpPort, membershipCounter);
             case "leave" -> {
-                // Updates view of the cluster membership and adds the log
-                this.membershipService.removeNodeFromMap(nodeId);
-                this.membershipService.addLog(nodeId, membershipCounter);
+                this.membershipService.handleLeaveRequest(nodeId, membershipCounter);
             }
         }
     }

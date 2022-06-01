@@ -8,6 +8,8 @@ import server.Constants;
 import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.util.*;
 
@@ -35,8 +37,6 @@ public class MembershipService implements ClusterMembership {
         this.membershipReplyNodes = new HashSet<>();
         this.repliedNodes = new HashSet<>();
         this.createNodeFolder();
-
-        // CHECK IF CRASHED (IF membershipCounter is EVEN - i.e part of the Cluster)
     }
 
     /**
@@ -49,7 +49,6 @@ public class MembershipService implements ClusterMembership {
                 this.updateMembershipCounter(this.membershipCounter + 1);
             this.addLog(this.nodeId, this.membershipCounter);
             this.multicastJoin();
-            // TODO: OPEN UDP / TCP LISTENER ??
         } else {
             throw new RuntimeException("Attempting to join the cluster while being already a member.");
         }
@@ -100,7 +99,7 @@ public class MembershipService implements ClusterMembership {
         this.addNodeToMap(this.nodeId, this.tcpPort);
         this.addLog(this.nodeId, this.membershipCounter);
 
-
+        this.retransmissionCounter = 0;
         while (this.retransmissionCounter < maxRetransmissions) {
             int elapsedTime = 0;
             try {
@@ -157,6 +156,8 @@ public class MembershipService implements ClusterMembership {
     }
 
     /**
+     * Beware that when counter is 0 it can or not be a member
+     * @param counter
      * @return true if a node is a member of the nodeMap. False otherwise.
      */
     public static boolean isClusterMember(int counter) {
@@ -233,11 +234,12 @@ public class MembershipService implements ClusterMembership {
 
             synchronized (logPath.intern()) {
                 File memberLog = new File(logPath);
-
-                // Set initial log to be the current node
-                FileWriter writer = new FileWriter(memberLog, false);
-                writer.write(String.format("%s %d", this.nodeId, this.membershipCounter));
-                writer.close();
+                if (!memberLog.exists()) {
+                    // Set initial log to be the current node
+                    FileWriter writer = new FileWriter(memberLog, false);
+                    writer.write(String.format("%s %d", this.nodeId, this.membershipCounter));
+                    writer.close();
+                }
             }
         } catch (IOException e) {
             throw new RuntimeException(e);
@@ -342,6 +344,7 @@ public class MembershipService implements ClusterMembership {
     }
 
     public void handleJoinRequest(String nodeId, int tcpPort, int membershipCounter) {
+        System.out.println("Received join request with membershipCounter: " + membershipCounter);
         if (this.repliedNodes.contains(Utils.generateKey(nodeId))) {
             System.out.println("Received join from node that was already replied.");
             return;
@@ -367,6 +370,15 @@ public class MembershipService implements ClusterMembership {
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    public void handleLeaveRequest(String nodeId,  int membershipCounter) {
+        // Updates view of the cluster membership and adds the log
+        this.removeNodeFromMap(nodeId);
+        this.addLog(nodeId, membershipCounter);
+
+        // Updated membership info TODO: CHECK IF THIS IS OK
+        this.repliedNodes.clear();
     }
 
     public void handleMembershipResponse(Message message) {
@@ -411,5 +423,23 @@ public class MembershipService implements ClusterMembership {
 
     public int getMembershipCounter() {
         return membershipCounter;
+    }
+
+    /**
+     *
+     * @return true if node crashed while being a member of the cluster
+     */
+    public boolean hasCrashed() {
+        if (!isClusterMember(this.membershipCounter)) return false;
+
+        // In case a cluster is composed by only 1 node joining and leaving
+        if (this.membershipCounter != 0) return true;
+
+        try {
+            Path path = Paths.get(this.folderPath + Utils.membershipLogFileName);
+            return Files.lines(path).count() > 1;
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 }

@@ -39,7 +39,7 @@ public class Store implements Server{
     private ServerSocket serverSocket = null;
     private MulticastSocket multicastSocket = null;
 
-    public Store(String multicastIPAddr, int multicastIPPort, String nodeId, int storePort) {
+    public Store(String multicastIPAddr, int multicastIPPort, String nodeId, int storePort) throws RemoteException {
         this.multicastIPAddr = multicastIPAddr;
         this.multicastIPPort = multicastIPPort;
         this.nodeId = nodeId;
@@ -48,6 +48,9 @@ public class Store implements Server{
         this.membershipService = new MembershipService(multicastIPAddr, multicastIPPort, nodeId, storePort);
         this.storageService = new StorageService(membershipService.getNodeMap(), nodeId, executorService);
         this.transferService = new TransferService(membershipService.getNodeMap(), storageService, new Node(nodeId, storePort));
+
+        // CHECK IF CRASHED (IF membershipCounter is EVEN - i.e part of the Cluster)
+        this.checkNodeCrash();
     }
     public static void main(String[] args) {
         if (args.length != 4) {
@@ -84,6 +87,13 @@ public class Store implements Server{
 
     @Override
     public boolean join() throws RemoteException {
+        // Checking serverSocket == null since when membershipCounter=0 it can be a member or not
+        if ( (MembershipService.isClusterMember(this.membershipService.getMembershipCounter()) &&
+                this.membershipService.getMembershipCounter() != 0)  || (serverSocket != null)) {
+            System.err.println("Attempting to join a cluster while being a member.");
+            return false;
+        }
+
         try {
             try {
                 InetAddress addr = InetAddress.getByName(nodeId);
@@ -96,8 +106,8 @@ public class Store implements Server{
             executorService.submit(new TCPListener(storageService, membershipService, transferService, executorService, serverSocket));
 
 
-            membershipService.join();
-            transferService.join();
+            this.membershipService.join();
+            this.transferService.join();
 
             try {
                 multicastSocket = new MulticastSocket(multicastIPPort);
@@ -151,5 +161,14 @@ public class Store implements Server{
         }
 
         return true;
+    }
+
+    private void checkNodeCrash() throws RemoteException {
+        if (this.membershipService.hasCrashed()) {
+            System.out.println("Restoring the Store state after crash...");
+            // This means the node crashed while being a part
+            this.membershipService.leave();
+            this.join();
+        }
     }
 }
