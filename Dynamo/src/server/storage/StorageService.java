@@ -8,6 +8,8 @@ import server.cluster.Node;
 
 import java.io.*;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 
@@ -175,9 +177,20 @@ public class StorageService implements KeyValue {
         }
     }
 
-    public String[] getFiles() {
+    public List<String> getFiles() {
         File folder = new File(dbFolder);
-        return folder.list();
+        String[] folderArray = folder.list();
+        List<String> folderList = new ArrayList<>();
+        if (folderArray == null) return folderList;
+
+        for (String file : folderArray) {
+            if (!file.equals("tombstones") && !file.equals("membership.log") &&
+                    !file.equals("membershipCounter.txt")) {
+                folderList.add(file);
+            }
+        }
+
+        return folderList;
     }
 
     public String getDbFolder() {

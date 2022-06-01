@@ -10,6 +10,7 @@ import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 import java.util.concurrent.ExecutorService;
 
 public class TCPListener implements Runnable {
@@ -100,7 +101,7 @@ public class TCPListener implements Runnable {
                 reply = storageService.getAndDelete(key);
             }
             case "getFiles" -> {
-                String[] nodeFiles = storageService.getFiles();
+                List<String> nodeFiles = storageService.getFiles();
                 StringBuilder sb = new StringBuilder();
 
                 if (nodeFiles != null) {
