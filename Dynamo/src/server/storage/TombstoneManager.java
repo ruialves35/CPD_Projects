@@ -30,10 +30,14 @@ public class TombstoneManager implements Runnable {
 
             for (File file : tombstones) {
                 if (System.currentTimeMillis() - file.lastModified() > Constants.tombstoneExpirationMS) {
-                    if (!file.delete()) System.out.println("Error deleting tombstone file: "+ file.getName());
                     String realFilePath = dbFolder + "/" + file.getName();
                     File realFile = new File(realFilePath);
-                    if (!realFile.delete()) System.out.println("Error deleting real file: " + realFile.getName());
+                    if (!realFile.exists()) {
+                        System.out.println("File corresponding to the tombstone does not exist: " + realFile.getName());
+                        break; // It's possible to receive a delete request before the respective put request
+                    }
+                    if (!file.delete()) System.out.println("Error deleting tombstone file: "+ file.getName());
+                    if (!realFile.delete()) System.out.println("Error deleting real file: "+ realFile.getName());
                 }
             }
         }
