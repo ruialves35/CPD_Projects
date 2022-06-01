@@ -26,6 +26,10 @@ public class TestClient {
 
         // Either <IP address>:<port number> (TCP/UDP) or object's name (RMI)
         final String nodeAP = args[0];
+        String[] nodeInfo = nodeAP.split(":", 2);
+        String nodeIP = nodeInfo[0];
+        String nodeSuffix = nodeInfo[1];
+
         final String operation = args[1];
         final String operand = args.length == 3 ? args[2] : null;
 
@@ -39,36 +43,17 @@ public class TestClient {
             System.exit(1);
         }
 
-        try {
-            Registry registry = LocateRegistry.getRegistry(nodeAP);
-            Server serverStub = (Server) registry.lookup("Server");
-
-            TestClient client = new TestClient();
-
-            switch(operation) {
-                case "join" -> serverStub.join();
-                case "leave" -> serverStub.leave();
-                case "put" -> serverStub.put(operand);
-                case "get" -> handleGet(serverStub, operand);
-                case "delete" -> serverStub.delete(operand);
+        if (operation.equals("join") || operation.equals("leave"))
+            membershipOperation(nodeIP, nodeSuffix, operation);
+        else {
+            try {
+                keyValueOperation(nodeIP, Integer.parseInt(nodeSuffix), operation, operand);
+            } catch (IOException e) {
+                // TODO Handle specific errors
+                System.out.println("Client sided error:");
+                e.printStackTrace();
             }
-
-            /* if (operation.equals("join") || operation.equals("leave"))
-                client.membershipOperation(nodeAP, operation);
-            else {
-                try {
-                    client.keyValueOperation(nodeAP, operation, operand);
-                } catch (IOException e) {
-                    // TODO Handle specific errors
-                    System.out.println("Client sided error:");
-                    e.printStackTrace();
-                }
-            } */
-
-        } catch (RemoteException | NotBoundException e) {
-            throw new RuntimeException(e);
         }
-
     }
 
     private static void handleGet(Server serverStub, String fileKey) throws RemoteException {
@@ -86,14 +71,9 @@ public class TestClient {
         } catch(IOException e) {
             throw new RuntimeException(e);
         }
-
     }
 
-    private void keyValueOperation(String nodeAP, String operation, String operand) throws IOException {
-        String[] nodeInfo = nodeAP.split(":", 2);
-        String nodeIP = nodeInfo[0];
-        int nodePort = Integer.parseInt(nodeInfo[1]);
-
+    private static void keyValueOperation(String nodeIP, int nodePort, String operation, String operand) throws IOException {
         Message msg = buildKeyValueRequest(operand, operation);
         Message reply;
         do {
@@ -119,7 +99,7 @@ public class TestClient {
         }
     }
 
-    private Message buildKeyValueRequest(String operand, String operation) throws IOException {
+    private static Message buildKeyValueRequest(String operand, String operation) throws IOException {
         String key;
         byte[] file = null;
 
@@ -143,14 +123,23 @@ public class TestClient {
         return new Message("REQ", operation, body);
     }
 
-    private void saveFile(byte[] value) throws IOException {
+    private static void saveFile(byte[] value) throws IOException {
         // TODO Where should we save the file?
         try (FileOutputStream fos = new FileOutputStream("file")) {
             fos.write(value);
         }
     }
 
-    private void membershipOperation(String nodeAP, String operation) {
+    private static void membershipOperation(String nodeIp, String remoteObjName, String operation) {
+        try {
+            Registry registry = LocateRegistry.getRegistry(nodeIp);
+            Server serverStub = (Server) registry.lookup(remoteObjName);
 
+            if (operation.equals("join")) serverStub.join();
+            else if (operation.equals("leave")) serverStub.leave();
+
+        } catch (RemoteException | NotBoundException e) {
+            throw new RuntimeException(e);
+        }
     }
 }
