@@ -29,8 +29,8 @@ public class TombstoneManager implements Runnable {
             }
 
             for (File file : tombstones) {
-                try (DataInputStream fis = new DataInputStream(new FileInputStream(file))) {
-                    long timestamp = fis.readLong();
+                try {
+                    long timestamp = getTimestamp(file);
 
                     if (System.currentTimeMillis() - timestamp > Constants.tombstoneExpirationMS) {
                         String realFilePath = dbFolder + "/" + file.getName();
@@ -47,6 +47,12 @@ public class TombstoneManager implements Runnable {
                     throw new RuntimeException(e);
                 }
             }
+        }
+    }
+
+    public static long getTimestamp(File file) throws IOException {
+        try (DataInputStream fis = new DataInputStream(new FileInputStream(file))) {
+            return fis.readLong();
         }
     }
 }

@@ -71,8 +71,12 @@ public class TestClient {
             }
         } while (reply.getAction().equals("redirect"));
 
-        if (operation.equals("get") && !reply.getAction().equals("error"))
-            saveFile(reply.getBody());
+        if (operation.equals("get") && !reply.getAction().equals("error")) {
+            ByteArrayInputStream bis = new ByteArrayInputStream(reply.getBody());
+            //noinspection ResultOfMethodCallIgnored
+            bis.skip(8); // Ignore tombstone
+            saveFile(bis.readAllBytes());
+        }
     }
 
     private Message buildKeyValueRequest(String operand, String operation) throws IOException {

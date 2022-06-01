@@ -86,7 +86,7 @@ public class StorageService implements KeyValue {
             return new Message("REP", "error", null);
         }
 
-        return new Message("REP", "ok", value);
+        return buildTombstoneMessage(key, value);
     }
 
     @Override
@@ -127,7 +127,7 @@ public class StorageService implements KeyValue {
         try (FileInputStream fis = new FileInputStream(filePath)) {
             value = fis.readAllBytes();
         } catch (IOException e) {
-            System.out.println("Error opening file in get operation: " + filePath);
+            System.out.println("Error opening file in get operation: " + key);
             return new Message("REP", "error", null);
         }
 
@@ -135,7 +135,7 @@ public class StorageService implements KeyValue {
         if (!file.delete())
             System.out.println("Failed to delete the file: " + key);
 
-        return new Message("REP", "ok", value);
+        return buildTombstoneMessage(key, value);
     }
 
     public Message saveFile(String key, byte[] file) {
@@ -159,14 +159,21 @@ public class StorageService implements KeyValue {
     public Message safeDelete(String key) {
         String filePath = tombstoneFolder + key;
 
-        try (FileOutputStream fos = new FileOutputStream(filePath)) {
-            DataOutputStream dos = new DataOutputStream(fos);
-            dos.writeLong(System.currentTimeMillis());
+        try {
+            saveTombstone(key, System.currentTimeMillis());
             return new Message("REP", "ok", null);
         } catch (IOException e) {
             System.out.println("Error creating tombstone file: " + filePath);
             return new Message("REP", "error", null);
         }
+    }
+
+    public void saveTombstone(String key, long timestamp) throws IOException {
+        String filePath = tombstoneFolder + key;
+
+        FileOutputStream fos = new FileOutputStream(filePath);
+        DataOutputStream dos = new DataOutputStream(fos);
+        dos.writeLong(timestamp);
     }
 
     public List<String> getFiles() {
@@ -244,6 +251,21 @@ public class StorageService implements KeyValue {
                 System.out.println("Error creating tombstone folder");
                 throw new RuntimeException("Error creating tombstone folder");
             }
+        }
+    }
+
+    private Message buildTombstoneMessage(String key, byte[] value) {
+        File tombstoneFile = new File(tombstoneFolder + key);
+
+        try (ByteArrayOutputStream bos = new ByteArrayOutputStream()) {
+            DataOutputStream dos = new DataOutputStream(bos);
+            dos.writeLong(tombstoneFile.exists() ?
+                    TombstoneManager.getTimestamp(tombstoneFile) : 0);
+            dos.write(value);
+            return new Message("REP", "ok", bos.toByteArray());
+        } catch (IOException e) {
+            System.out.println("Error opening tombstone in getAndDelete operation: " + key);
+            return new Message("REP", "error", null);
         }
     }
 }

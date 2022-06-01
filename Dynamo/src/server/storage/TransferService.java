@@ -124,7 +124,16 @@ public class TransferService {
 
                 byte[] response = Sender.sendTCPMessage(msg.toBytes(), node.getId(), node.getPort());
                 Message responseMsg = new Message(response);
-                storageService.saveFile(fileName, responseMsg.getBody());
+
+                DataInputStream dis = new DataInputStream(new ByteArrayInputStream(responseMsg.getBody()));
+                long tombTimestamp = dis.readLong();
+                //noinspection ResultOfMethodCallIgnored
+                dis.skip(8);
+                byte[] file = dis.readAllBytes();
+
+                storageService.saveFile(fileName, file);
+                if (tombTimestamp != 0)
+                    storageService.saveTombstone(fileName, tombTimestamp);
             } catch (IOException e) {
                 System.out.println("Could not get the files from the next node on Join.");
                 throw new RuntimeException(e);
