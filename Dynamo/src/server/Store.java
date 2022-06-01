@@ -152,32 +152,4 @@ public class Store implements Server{
 
         return true;
     }
-
-    @Override
-    public String put(String filePath) throws RemoteException {
-        File file = new File(filePath);
-        String fileKey = Utils.generateKey(file.getName());
-
-        try {
-            byte[] data = Files.readAllBytes(Paths.get(filePath));
-            storageService.put(fileKey, data);
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-
-        return fileKey;
-    }
-
-    @Override
-    public byte[] get(String fileKey) throws RemoteException {
-        Message fileMessage  = storageService.get(fileKey);
-        return fileMessage.getBody();
-    }
-
-    @Override
-    public boolean delete(String fileKey) throws RemoteException {
-        storageService.delete(fileKey);
-
-        return true;
-    }
 }
