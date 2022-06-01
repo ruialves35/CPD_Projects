@@ -112,6 +112,7 @@ public class TCPListener implements Runnable {
                 reply = new Message("REP", "ok", sb.toString().getBytes(StandardCharsets.UTF_8));
             }
             case "delete" -> reply = storageService.delete(new String(message.getBody()));
+            case "safeDelete" -> reply = storageService.safeDelete(new String(message.getBody()));
             default -> {
                 System.out.println("Invalid event received! - " + message.getAction());
                 return;

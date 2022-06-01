@@ -20,6 +20,7 @@ public class StorageService implements KeyValue {
         this.nodeMap = nodeMap;
         this.ownID = ownID;
         this.dbFolder = Utils.generateFolderPath(ownID);
+        createTombstoneFolder();
     }
 
     @Override
@@ -90,15 +91,17 @@ public class StorageService implements KeyValue {
         if (!node.getId().equals(ownID))
             return buildRedirectMessage(node);
 
-        // TODO Tombstones
+        // File is not in the system
         if (!hasFile(key)) return new Message("REP", "ok", null);
 
+        /*
         String filePath = dbFolder + key;
         File file = new File(filePath);
         if (!file.delete()) {
             System.out.println("Error deleting the file: " + filePath);
             return new Message("REP", "error", null);
-        }
+        }*/
+        this.safeDelete(key);
 
         // Tell the following nodes to delete the file (Replication)
         for (int i = 1; i < Constants.replicationFactor; ++i) {
@@ -106,7 +109,7 @@ public class StorageService implements KeyValue {
             if (node.getId().equals(ownID)) break; // Not enough nodes available
 
             try {
-                Message msg = new Message("REQ", "getAndDelete", key.getBytes(StandardCharsets.UTF_8));
+                Message msg = new Message("REQ", "safeDelete", key.getBytes(StandardCharsets.UTF_8));
 
                 // TODO What to do in case of error reply? What if there's no reply (crash)?
                 // TODO It's stuck waiting for a response. Use thread pool?
@@ -157,6 +160,19 @@ public class StorageService implements KeyValue {
         }
 
         return reply;
+    }
+
+    public Message safeDelete(String key) {
+        String filePath = dbFolder + "/tombstones/" + key;
+        try (FileOutputStream fos = new FileOutputStream(filePath)) {
+            DataOutputStream dos = new DataOutputStream(fos);
+            dos.writeLong(System.currentTimeMillis());
+            return new Message("REP", "ok", null);
+
+        } catch (IOException e) {
+            System.out.println("Error opening file in put operation: " + filePath);
+            return new Message("REP", "error", null);
+        }
     }
 
     public String[] getFiles() {
@@ -214,5 +230,15 @@ public class StorageService implements KeyValue {
     private Message buildRedirectMessage(Node newNode) {
         String redirectInfo = newNode.getId() + Utils.newLine + newNode.getPort();
         return new Message("REP", "redirect", redirectInfo.getBytes(StandardCharsets.UTF_8));
+    }
+
+    private void createTombstoneFolder() {
+        File folder = new File(dbFolder + "/tombstones");
+        if (!folder.exists()) {
+            if (!folder.mkdir()) {
+                System.out.println("Error creating tombstone folder");
+                throw new RuntimeException("Error creating tombstone folder");
+            }
+        }
     }
 }
