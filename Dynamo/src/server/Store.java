@@ -85,7 +85,6 @@ public class Store implements Server{
     @Override
     public boolean join() throws RemoteException {
         try {
-            // THERE ARE 2 SOLUTIONS: THIS ONE or LEAVING THE THREADS RUNNING BUT NOT PROCESSING THE EVENTS
             try {
                 InetAddress addr = InetAddress.getByName(nodeId);
                 serverSocket = new ServerSocket(storePort, 50, addr);
@@ -118,19 +117,23 @@ public class Store implements Server{
 
     @Override
     public boolean leave() throws RemoteException {
+        // Checking serverSocket == null since when membershipCounter=0 it can be a member or not
+        if (!MembershipService.isClusterMember(this.membershipService.getMembershipCounter()) || (serverSocket == null)) {
+            System.err.println("Attempting to leave the cluster while not being a member.");
+            return false;
+        }
+
         try {
             try {
-                if (serverSocket != null) {
-                    serverSocket.close();
-                    serverSocket = null;
-                }
-                if (multicastSocket != null) {
-                    InetSocketAddress group = new InetSocketAddress(multicastIPAddr, multicastIPPort);
-                    NetworkInterface netInf = NetworkInterface.getByIndex(0);
-                    multicastSocket.leaveGroup(group, netInf);
-                    multicastSocket.close();
-                    multicastSocket = null;
-                }
+                serverSocket.close();
+                serverSocket = null;
+
+                InetSocketAddress group = new InetSocketAddress(multicastIPAddr, multicastIPPort);
+                NetworkInterface netInf = NetworkInterface.getByIndex(0);
+                multicastSocket.leaveGroup(group, netInf);
+                multicastSocket.close();
+                multicastSocket = null;
+
                 executorService.shutdownNow();
                 if (executorService.awaitTermination(1, TimeUnit.SECONDS)) {
                     System.out.println("Executor terminated.");

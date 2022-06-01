@@ -35,6 +35,8 @@ public class MembershipService implements ClusterMembership {
         this.membershipReplyNodes = new HashSet<>();
         this.repliedNodes = new HashSet<>();
         this.createNodeFolder();
+
+        // CHECK IF CRASHED (IF membershipCounter is EVEN - i.e part of the Cluster)
     }
 
     /**
@@ -58,15 +60,11 @@ public class MembershipService implements ClusterMembership {
      */
     @Override
     public void leave() {
-        // TODO Leave protocol
         if (isClusterMember(this.membershipCounter)) {
             this.removeNodeFromMap(this.nodeId);
             this.updateMembershipCounter(this.membershipCounter + 1);
             this.addLog(this.nodeId, this.membershipCounter);
             this.multicastLeave();
-            // TODO: CLOSE UDP / TCP LISTENER ??
-        } else {
-            throw new RuntimeException("Attempting to leave the cluster while not being a member.");
         }
     }
 
@@ -101,6 +99,7 @@ public class MembershipService implements ClusterMembership {
         // Add this node information
         this.addNodeToMap(this.nodeId, this.tcpPort);
         this.addLog(this.nodeId, this.membershipCounter);
+
 
         while (this.retransmissionCounter < maxRetransmissions) {
             int elapsedTime = 0;
@@ -408,5 +407,9 @@ public class MembershipService implements ClusterMembership {
         }
 
         System.out.println("Received membership Logs: " + membershipLogs + "\nnodeMap: " + this.getNodeMap());
+    }
+
+    public int getMembershipCounter() {
+        return membershipCounter;
     }
 }
