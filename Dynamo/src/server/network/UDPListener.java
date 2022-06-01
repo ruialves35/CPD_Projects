@@ -73,6 +73,10 @@ public class UDPListener implements Runnable {
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
+
+        // If processing message from himself
+        if (this.membershipService.getNodeId().equals(nodeId)) return;
+
         System.out.printf("Received message from: %s (port %d). Membership Counter: %d%n", nodeId, tcpPort,
                 membershipCounter);
 

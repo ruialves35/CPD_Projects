@@ -23,7 +23,6 @@ public class MembershipService implements ClusterMembership {
     private final String folderPath;
     private int membershipCounter = 0; // NEEDS TO BE STORED IN NON-VOLATILE MEMORY TO SURVIVE NODE CRASHES
     private static final int maxRetransmissions = 3;
-    private int retransmissionCounter = 0;
     private final HashSet<String> membershipReplyNodes;
     private final HashSet<String> repliedNodes;
 
@@ -49,6 +48,9 @@ public class MembershipService implements ClusterMembership {
                 this.updateMembershipCounter(this.membershipCounter + 1);
             this.addLog(this.nodeId, this.membershipCounter);
             this.multicastJoin();
+
+            // Send election request
+            ElectionService.sendRequest(this.nodeId, this.getNextNode(Utils.generateKey(this.nodeId)));
         } else {
             throw new RuntimeException("Attempting to join the cluster while being already a member.");
         }
@@ -99,8 +101,8 @@ public class MembershipService implements ClusterMembership {
         this.addNodeToMap(this.nodeId, this.tcpPort);
         this.addLog(this.nodeId, this.membershipCounter);
 
-        this.retransmissionCounter = 0;
-        while (this.retransmissionCounter < maxRetransmissions) {
+        int retransmissionCounter = 0;
+        while (retransmissionCounter < maxRetransmissions) {
             int elapsedTime = 0;
             try {
                 Sender.sendMulticast(msg.toBytes(), this.multicastIpAddr, this.multicastIPPort);
@@ -108,7 +110,6 @@ public class MembershipService implements ClusterMembership {
                     Thread.sleep(Constants.multicastStepTime);
                     if (this.membershipReplyNodes.size() >= Constants.numMembershipMessages) {
                         this.membershipReplyNodes.clear();
-                        this.retransmissionCounter = 0;
                         System.out.println("New Node joined the distributed store");
                         return;
                     }
@@ -119,7 +120,7 @@ public class MembershipService implements ClusterMembership {
                 throw new RuntimeException(e);
             }
 
-            this.retransmissionCounter++;
+            retransmissionCounter++;
         }
 
         System.out.println("Prime Node joined the distributed store.");
@@ -441,5 +442,25 @@ public class MembershipService implements ClusterMembership {
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    public String getNodeId() {
+        return nodeId;
+    }
+
+    /**
+     *  Gets next node to node with key. If there is no node with higher key value,
+     *  then gets the first node, so it behaves like a circular map
+     * @param key key of the node that we want to get the next node
+     * @return Next Node
+     */
+    public Node getNextNode(String key) {
+        if (nodeMap.size() == 0) return null;
+
+        // Get the next node to store the files
+        Map.Entry<String, Node> nextEntry = nodeMap.higherEntry(key);
+        if (nextEntry == null) nextEntry = nodeMap.firstEntry();
+        Node nextNode = nextEntry.getValue();
+        return nextNode;
     }
 }
