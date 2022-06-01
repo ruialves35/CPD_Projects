@@ -22,6 +22,7 @@ public class Sender {
         socket.send(packet);
     }
 
+    // TODO Should have a timeout
     public static byte[] sendTCPMessage(byte[] msg, String ipAddr, int ipPort) throws IOException {
         Socket socket = new Socket(ipAddr, ipPort);
         DataOutputStream ostream = new DataOutputStream(socket.getOutputStream());

@@ -25,11 +25,12 @@ public class Store {
         final String nodeId = args[2];
         final int storePort = Integer.parseInt(args[3]);
 
+        final ExecutorService executorService = Executors.newCachedThreadPool();
+
         final MembershipService membershipService = new MembershipService(multicastIPAddr, multicastIPPort, nodeId,
                 storePort);
-        final StorageService storageService = new StorageService(membershipService.getNodeMap(), nodeId);
+        final StorageService storageService = new StorageService(membershipService.getNodeMap(), nodeId, executorService);
         final TransferService transferService = new TransferService(storageService, new Node(nodeId, storePort));
-        final ExecutorService executorService = Executors.newCachedThreadPool();
 
         try {
             executorService.submit(new TCPListener(storageService, membershipService, transferService, executorService,

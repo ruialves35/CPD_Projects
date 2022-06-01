@@ -12,16 +12,19 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
+import java.util.concurrent.ExecutorService;
 
 public class StorageService implements KeyValue {
     private final TreeMap<String, Node> nodeMap;
     private final String ownID;
     private final String dbFolder;
     private final String tombstoneFolder;
+    private final ExecutorService executorService;
 
-    public StorageService(TreeMap<String, Node> nodeMap, String ownID) {
+    public StorageService(TreeMap<String, Node> nodeMap, String ownID, ExecutorService executorService) {
         this.nodeMap = nodeMap;
         this.ownID = ownID;
+        this.executorService = executorService;
         this.dbFolder = Utils.generateFolderPath(ownID);
         this.tombstoneFolder = dbFolder + "tombstones/";
         createTombstoneFolder();
@@ -45,8 +48,8 @@ public class StorageService implements KeyValue {
 
         // Send the file to the following nodes (Replication)
         for (int i = 1; i < Constants.replicationFactor; ++i) {
-            node = getNextNode(node);
-            if (node.getId().equals(ownID)) break; // Not enough nodes available
+            final Node nextNode = getNextNode(node);
+            if (nextNode.getId().equals(ownID)) break; // Not enough nodes available
 
             final ByteArrayOutputStream out = new ByteArrayOutputStream();
             try {
@@ -57,12 +60,13 @@ public class StorageService implements KeyValue {
                 Message msg = new Message("REQ", "saveFile", out.toByteArray());
 
                 // If the node is down, the node should recover when it gets back up
-                // TODO It's stuck waiting for a response. Use thread pool?
-                Sender.sendTCPMessage(msg.toBytes(), node.getId(), node.getPort());
+                executorService.submit(() -> Sender.sendTCPMessage(msg.toBytes(), nextNode.getId(), nextNode.getPort()));
             } catch (IOException e) {
                 System.out.println("Error sending saveFile message to " + node.getId());
                 e.printStackTrace();
             }
+
+            node = nextNode;
         }
 
         return new Message("REP", "ok", null);
@@ -102,19 +106,14 @@ public class StorageService implements KeyValue {
 
         // Tell the following nodes to delete the file (Replication)
         for (int i = 1; i < Constants.replicationFactor; ++i) {
-            node = getNextNode(node);
-            if (node.getId().equals(ownID)) break; // Not enough nodes available
+            final Node nextNode = getNextNode(node);
+            if (nextNode.getId().equals(ownID)) break; // Not enough nodes available
 
-            try {
-                Message msg = new Message("REQ", "safeDelete", key.getBytes(StandardCharsets.UTF_8));
+            Message msg = new Message("REQ", "safeDelete", key.getBytes(StandardCharsets.UTF_8));
 
-                // If the node is down, the node should recover when it gets back up
-                // TODO It's stuck waiting for a response. Use thread pool?
-                Sender.sendTCPMessage(msg.toBytes(), node.getId(), node.getPort());
-            } catch (IOException e) {
-                System.out.println("Error sending deleteFile message to " + node.getId());
-                e.printStackTrace();
-            }
+            // If the node is down, the node should recover when it gets back up
+            executorService.submit(() -> Sender.sendTCPMessage(msg.toBytes(), nextNode.getId(), nextNode.getPort()));
+            node = nextNode;
         }
 
         return new Message("REP", "ok", null);
