@@ -78,6 +78,40 @@ public class TransferService {
     }
 
     /**
+     * Recovers from a crash by updating the node's files and deleting invalid ones
+     */
+    private void recoverFromCrash() {
+        if (storageService.getNumberOfNodes() == 1) return;
+
+        // Copy own files
+        Node nextNode = storageService.getNextNode(this.node);
+        ArrayList<String> nextNodeFiles = this.getNodeFileNames(nextNode);
+        ArrayList<String> filesToTransfer = filterResponsibleFiles(nextNodeFiles, this.node);
+
+        List<String> validFiles = new ArrayList<>(filesToTransfer);
+        getFiles(filesToTransfer, nextNode, false);
+
+        // get replicas from previous replicationFactor nodes
+        Node curNode = storageService.getPreviousNode(this.node);
+        for (int i = 0; i < Constants.replicationFactor - 1; ++i) {
+            if (curNode.getId().equals(this.node.getId())) break;
+
+            ArrayList<String> curNodeFiles = this.getNodeFileNames(curNode);
+            filesToTransfer = filterResponsibleFiles(curNodeFiles, curNode);
+            validFiles.addAll(filesToTransfer);
+
+            getFiles(filesToTransfer, curNode, false);
+            curNode = storageService.getPreviousNode(curNode);
+        }
+
+        // delete invalid files
+        List<String> allFiles = storageService.getFiles();
+        for (String file : allFiles) {
+            if (!validFiles.contains(file)) storageService.deleteFilePermanently(file);
+        }
+    }
+
+    /**
      * Creates a Message request to save a file
      * @param file file to be saved
      * @return if everything went well Message with saveFile action,
