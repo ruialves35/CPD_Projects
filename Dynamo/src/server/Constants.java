@@ -9,6 +9,6 @@ public class Constants {
     public static final int timeoutStepTime = 500;
     public static final int numMembershipMessages = 3;
     public static final int replicationFactor = 3;
-    public static final long tombstoneCheckIntervalMS = 100;
-    public static final long tombstoneExpirationMS = 5000;
+    public static final long tombstoneCheckIntervalMS = 200;
+    public static final long tombstoneExpirationMS = 10000;
 }
