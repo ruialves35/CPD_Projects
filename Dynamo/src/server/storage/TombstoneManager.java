@@ -2,7 +2,7 @@ package server.storage;
 
 import server.Constants;
 
-import java.io.File;
+import java.io.*;
 
 public class TombstoneManager implements Runnable {
     private final File tombstoneFolder;
@@ -29,15 +29,22 @@ public class TombstoneManager implements Runnable {
             }
 
             for (File file : tombstones) {
-                if (System.currentTimeMillis() - file.lastModified() > Constants.tombstoneExpirationMS) {
-                    String realFilePath = dbFolder + "/" + file.getName();
-                    File realFile = new File(realFilePath);
-                    if (!realFile.exists()) {
-                        System.out.println("File corresponding to the tombstone does not exist: " + realFile.getName());
-                        break; // It's possible to receive a delete request before the respective put request
+                try (DataInputStream fis = new DataInputStream(new FileInputStream(file))) {
+                    long timestamp = fis.readLong();
+
+                    if (System.currentTimeMillis() - timestamp > Constants.tombstoneExpirationMS) {
+                        String realFilePath = dbFolder + "/" + file.getName();
+                        File realFile = new File(realFilePath);
+                        if (!realFile.exists()) {
+                            System.out.println("File corresponding to the tombstone does not exist: " + realFile.getName());
+                            break; // It's possible to receive a delete request before the respective put request
+                        }
+                        if (!file.delete()) System.out.println("Error deleting tombstone file: "+ file.getName());
+                        if (!realFile.delete()) System.out.println("Error deleting real file: "+ realFile.getName());
                     }
-                    if (!file.delete()) System.out.println("Error deleting tombstone file: "+ file.getName());
-                    if (!realFile.delete()) System.out.println("Error deleting real file: "+ realFile.getName());
+                } catch (IOException e) {
+                    System.out.println("Error opening tombstone file in manager: " + file.getName());
+                    throw new RuntimeException(e);
                 }
             }
         }
