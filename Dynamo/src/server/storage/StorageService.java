@@ -56,7 +56,7 @@ public class StorageService implements KeyValue {
 
                 Message msg = new Message("REQ", "saveFile", out.toByteArray());
 
-                // TODO What to do in case of error reply? What if there's no reply (crash)?
+                // If the node is down, the node should recover when it gets back up
                 // TODO It's stuck waiting for a response. Use thread pool?
                 Sender.sendTCPMessage(msg.toBytes(), node.getId(), node.getPort());
             } catch (IOException e) {
@@ -108,7 +108,7 @@ public class StorageService implements KeyValue {
             try {
                 Message msg = new Message("REQ", "safeDelete", key.getBytes(StandardCharsets.UTF_8));
 
-                // TODO What to do in case of error reply? What if there's no reply (crash)?
+                // If the node is down, the node should recover when it gets back up
                 // TODO It's stuck waiting for a response. Use thread pool?
                 Sender.sendTCPMessage(msg.toBytes(), node.getId(), node.getPort());
             } catch (IOException e) {
@@ -131,11 +131,10 @@ public class StorageService implements KeyValue {
             return new Message("REP", "error", null);
         }
 
-        File file = new File(filePath);
-        if (!file.delete())
-            System.out.println("Failed to delete the file: " + key);
+        Message reply = buildTombstoneMessage(key, value);
+        deleteFilePermanently(key);
 
-        return buildTombstoneMessage(key, value);
+        return reply;
     }
 
     public Message saveFile(String key, byte[] file) {
@@ -237,6 +236,20 @@ public class StorageService implements KeyValue {
         if (nodeEntry == null) nodeEntry = nodeMap.firstEntry();
 
         return nodeEntry.getValue();
+    }
+
+    public void deleteFilePermanently(String key) {
+        String filePath = dbFolder + key;
+        File file = new File(filePath);
+        if (!file.delete())
+            System.out.println("Failed to delete the file: " + key);
+
+        String tombstonePath = tombstoneFolder + key;
+        File tombstoneFile = new File(tombstonePath);
+        if (tombstoneFile.exists()) {
+            if (!tombstoneFile.delete())
+                System.out.println("Failed to delete the tombstone file: " + key);
+        }
     }
 
     private Message buildRedirectMessage(Node newNode) {
