@@ -463,4 +463,34 @@ public class MembershipService implements ClusterMembership {
         Node nextNode = nextEntry.getValue();
         return nextNode;
     }
+
+    public void handleElectionRequest(Message message) {
+        System.out.println("Received election request.");
+
+        InputStream is = new ByteArrayInputStream(message.getBody());
+        BufferedReader br = new BufferedReader(new InputStreamReader(is));
+
+        String line, currNodeId;
+        final HashMap<String, Integer> membershipLogs = new HashMap<>();
+        try {
+            currNodeId = br.readLine();
+            // Verify if currNodeId received is this node (meaning this node was elected)
+            if (currNodeId.equals(this.nodeId)) {
+                System.out.println("THIS NODE WAS ELECTED");
+                return;
+            }
+
+            while ((line = br.readLine()) != null) {
+                String[] logData = line.split(" ");
+                membershipLogs.put(logData[0], Integer.parseInt(logData[1]));
+            }
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+
+        if (LogHandler.isMoreRecent(membershipLogs, currNodeId, this.folderPath, this.nodeId)) {
+            // Propagate the message to the next node?
+            System.out.println("Log is more recent! propagate to next node");
+        }
+    }
 }

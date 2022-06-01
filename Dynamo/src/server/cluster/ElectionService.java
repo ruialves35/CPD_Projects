@@ -1,6 +1,7 @@
 package server.cluster;
 
 import common.Message;
+import common.MessageTypes;
 import common.Sender;
 import common.Utils;
 
@@ -15,6 +16,7 @@ public class ElectionService {
         public static void sendRequest(String nodeId, Node nextNode) {
                 if (nextNode == null) return;
 
+                System.out.println("Sending Election Request...");
                 Path path = Paths.get(Utils.generateFolderPath(nodeId) + Utils.membershipLogFileName);
 
                 try {
@@ -25,10 +27,12 @@ public class ElectionService {
                         out.write(nodeIdLine.getBytes(StandardCharsets.UTF_8));
                         out.write(fileData);
 
-                        Message electionMessage = new Message("REQ", "electionRequest", out.toByteArray());
+                        Message electionMessage = new Message(MessageTypes.REQUEST.getCode(), MessageTypes.ELECTION_REQUEST.getCode(), out.toByteArray());
                         Sender.sendTCPMessage(electionMessage.toBytes(), nextNode.getId(), nextNode.getPort());
                 } catch (IOException e) {
                         throw new RuntimeException(e);
                 }
         }
+
+
 }

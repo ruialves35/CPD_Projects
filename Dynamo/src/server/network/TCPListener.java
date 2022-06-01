@@ -1,6 +1,8 @@
 package server.network;
 
 import common.Message;
+import common.MessageTypes;
+import common.Utils;
 import server.cluster.MembershipService;
 import server.storage.StorageService;
 import server.storage.TransferService;
@@ -49,7 +51,7 @@ public class TCPListener implements Runnable {
                     } catch (IOException e) {
                         System.out.println("Error processing event");
                         // TODO Handle specific errors
-                        Message errorMsg = new Message("REP", "error", null);
+                        Message errorMsg = new Message(MessageTypes.REPLY.getCode(), "error", null);
                         try {
                             ostream.write(errorMsg.toBytes());
                             istream.close();
@@ -79,10 +81,14 @@ public class TCPListener implements Runnable {
 
         Message reply;
         switch (message.getAction()) {
+            case "electionRequest" -> {
+                this.membershipService.handleElectionRequest(message);
+                reply = new Message(MessageTypes.REPLY.getCode(), MessageTypes.OK.getCode(), "".getBytes(StandardCharsets.UTF_8));
+            }
             case "join" -> {
                 this.membershipService.handleMembershipResponse(message);
 
-                reply = new Message("REP", "ok", "".getBytes(StandardCharsets.UTF_8));
+                reply = new Message(MessageTypes.REPLY.getCode(), MessageTypes.OK.getCode(), "".getBytes(StandardCharsets.UTF_8));
             }
             case "get" -> reply = storageService.get(new String(message.getBody()));
             case "put" -> {
@@ -109,7 +115,7 @@ public class TCPListener implements Runnable {
                     }
                 }
 
-                reply = new Message("REP", "ok", sb.toString().getBytes(StandardCharsets.UTF_8));
+                reply = new Message(MessageTypes.REPLY.getCode(), MessageTypes.OK.getCode(), sb.toString().getBytes(StandardCharsets.UTF_8));
             }
             case "delete" -> reply = storageService.delete(new String(message.getBody()));
             case "safeDelete" -> reply = storageService.safeDelete(new String(message.getBody()));
