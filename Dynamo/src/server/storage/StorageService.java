@@ -17,11 +17,13 @@ public class StorageService implements KeyValue {
     private final TreeMap<String, Node> nodeMap;
     private final String ownID;
     private final String dbFolder;
+    private final String tombstoneFolder;
 
     public StorageService(TreeMap<String, Node> nodeMap, String ownID) {
         this.nodeMap = nodeMap;
         this.ownID = ownID;
         this.dbFolder = Utils.generateFolderPath(ownID);
+        this.tombstoneFolder = dbFolder + "tombstones/";
         createTombstoneFolder();
     }
 
@@ -96,13 +98,6 @@ public class StorageService implements KeyValue {
         // File is not in the system
         if (!hasFile(key)) return new Message("REP", "ok", null);
 
-        /*
-        String filePath = dbFolder + key;
-        File file = new File(filePath);
-        if (!file.delete()) {
-            System.out.println("Error deleting the file: " + filePath);
-            return new Message("REP", "error", null);
-        }*/
         this.safeDelete(key);
 
         // Tell the following nodes to delete the file (Replication)
@@ -137,11 +132,8 @@ public class StorageService implements KeyValue {
         }
 
         File file = new File(filePath);
-        if (file.delete()) {
-            System.out.println("Successfully Deleted file: " + file.getName() + " from node: " + dbFolder );
-        } else {
-            System.out.println("Failed to delete the file.");
-        }
+        if (!file.delete())
+            System.out.println("Failed to delete the file: " + key);
 
         return new Message("REP", "ok", value);
     }
@@ -165,7 +157,7 @@ public class StorageService implements KeyValue {
     }
 
     public Message safeDelete(String key) {
-        String filePath = dbFolder + "/tombstones/" + key;
+        String filePath = tombstoneFolder + key;
         File tombstoneFile = new File(filePath);
 
         try {
@@ -248,7 +240,7 @@ public class StorageService implements KeyValue {
     }
 
     private void createTombstoneFolder() {
-        File folder = new File(dbFolder + "/tombstones");
+        File folder = new File(tombstoneFolder);
         if (!folder.exists()) {
             if (!folder.mkdir()) {
                 System.out.println("Error creating tombstone folder");
