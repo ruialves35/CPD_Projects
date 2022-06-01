@@ -2,9 +2,9 @@ package server;
 
 import common.Message;
 import common.Utils;
-import example.Hello;
 import server.cluster.MembershipService;
 import server.cluster.Node;
+import server.network.MySocketFactory;
 import server.network.TCPListener;
 import server.network.UDPListener;
 import server.storage.StorageService;
@@ -12,9 +12,7 @@ import server.storage.TombstoneManager;
 import server.storage.TransferService;
 
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.lang.reflect.Member;
 import java.net.*;
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -23,7 +21,6 @@ import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.rmi.server.UnicastRemoteObject;
-import java.util.Scanner;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -65,18 +62,22 @@ public class Store implements Server{
         final int storePort = Integer.parseInt(args[3]);
 
         try {
-            LocateRegistry.createRegistry(1099);
+            InetAddress address = InetAddress.getByName(nodeId);
+            MySocketFactory sf = new MySocketFactory(address);
+            LocateRegistry.createRegistry(1099, null, sf);
 
             Store store = new Store(multicastIPAddr, multicastIPPort, nodeId, storePort);
             Server stub = (Server) UnicastRemoteObject.exportObject(store, 0);
 
             // Bind the remote object's stub in the registry
-            Registry registry = LocateRegistry.getRegistry();
+            Registry registry = LocateRegistry.getRegistry(nodeId, 1099, sf);
             registry.bind("Server", stub);
 
             System.out.println("Server ready");
         } catch (RemoteException | AlreadyBoundException e) {
             System.err.println("Server exception: " + e.toString());
+            e.printStackTrace();
+        } catch (UnknownHostException e) {
             e.printStackTrace();
         }
     }
