@@ -13,6 +13,16 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 
 public class ElectionService implements Runnable{
+        final String folderPath;
+        final String multicastIPAddr;
+        final int multicastPort;
+
+        public ElectionService(String folderPath, String multicastIPAddr, int multicastPort) {
+                this.folderPath = folderPath;
+                this.multicastIPAddr = multicastIPAddr;
+                this.multicastPort = multicastPort;
+        }
+
         public static void sendRequest(String nodeId, Node nextNode) {
                 if (nextNode == null) return;
 
@@ -47,6 +57,19 @@ public class ElectionService implements Runnable{
 
         @Override
         public void run() {
+                try {
+                        while (true) {
+                                byte[] electionBody = LogHandler.buildLogsBytes(this.folderPath);
+                                Message msg = new Message(MessageTypes.REQUEST.getCode(), MessageTypes.ELECTION_PING.getCode(), electionBody);
+
+                                Sender.sendMulticast(msg.toBytes(), this.multicastIPAddr, this.multicastPort);
+
+                                Thread.sleep(Utils.electionPingTime);
+                                // TODO: Check if needs to detect any exception to stop
+                        }
+                } catch (InterruptedException | IOException e) {
+                        e.printStackTrace();
+                }
 
         }
 }

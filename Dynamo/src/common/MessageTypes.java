@@ -13,7 +13,8 @@ public enum MessageTypes {
     GET_FILES("getFiles"),
     ERROR("error"),
     OK("ok"),
-    ELECTION_REQUEST("electionRequest");
+    ELECTION_REQUEST("electionRequest"),
+    ELECTION_PING("electionPing");
 
     private String code;
 

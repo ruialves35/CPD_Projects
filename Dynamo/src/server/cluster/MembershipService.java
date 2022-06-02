@@ -30,7 +30,7 @@ public class MembershipService implements ClusterMembership {
 
     private final ExecutorService executorService;
     private boolean isElected = false;
-    Future<String> electionPingThread;
+    Future<?> electionPingThread;
 
     public MembershipService(String multicastIPAddr, int multicastIPPort, String nodeId, int tcpPort, ExecutorService executorService) {
         this.nodeMap = new TreeMap<>();
@@ -319,20 +319,7 @@ public class MembershipService implements ClusterMembership {
             byteOut.write(this.nodeId.getBytes(StandardCharsets.UTF_8));
             byteOut.write(Utils.newLine.getBytes(StandardCharsets.UTF_8));
 
-            String logPath = this.folderPath + Constants.membershipLogFileName;
-
-            synchronized (logPath.intern()) {
-                File file = new File(logPath);
-                Scanner myReader = new Scanner(file);
-                for (int i = 0; i < Constants.numLogEvents; i++) {
-                    if (!myReader.hasNextLine())
-                        break;
-                    String line = myReader.nextLine();
-                    byteOut.write(line.getBytes(StandardCharsets.UTF_8));
-                    byteOut.write(Utils.newLine.getBytes(StandardCharsets.UTF_8));
-                }
-                myReader.close();
-            }
+            byteOut.write(LogHandler.buildLogsBytes(this.folderPath));
 
             byteOut.write(Utils.newLine.getBytes(StandardCharsets.UTF_8));
 
@@ -483,14 +470,11 @@ public class MembershipService implements ClusterMembership {
             newNodeId = br.readLine();
             // Verify if newNodeId received is this node (meaning this node was elected)
             if (newNodeId.equals(this.nodeId)) {
-                isElected = true;
-
                  if (this.executorService != null) {
-                     this.electionPingThread = this.executorService.submit(new ElectionService());
-
+                     this.electionPingThread = this.executorService.submit(new ElectionService(this.folderPath, this.multicastIpAddr, this.multicastIPPort));
+                     isElected = true;
+                     System.out.println("THIS NODE WAS ELECTED");
                  }
-
-                System.out.println("THIS NODE WAS ELECTED");
                 return;
             }
 

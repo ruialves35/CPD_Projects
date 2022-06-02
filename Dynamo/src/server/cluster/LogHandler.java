@@ -1,8 +1,10 @@
 package server.cluster;
 
 import common.Utils;
+import server.Constants;
 
 import java.io.*;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 
 public class LogHandler {
@@ -46,7 +48,7 @@ public class LogHandler {
     }
 
     public static HashMap<String, Integer> buildLogsMap(String folderPath) {
-        File file = new File(folderPath + Utils.membershipLogFileName);
+        File file = new File(folderPath + Constants.membershipLogFileName);
         HashMap<String, Integer> nodesMap = new HashMap<>();
 
         try {
@@ -63,5 +65,29 @@ public class LogHandler {
         }
 
         return nodesMap;
+    }
+
+    public static byte[] buildLogsBytes(String folderPath) {
+        String logPath = folderPath + Constants.membershipLogFileName;
+
+        ByteArrayOutputStream byteOut = new ByteArrayOutputStream();
+        synchronized (logPath.intern()) {
+            File file = new File(logPath);
+            try {
+                Scanner myReader = new Scanner(file);
+                for (int i = 0; i < Constants.numLogEvents; i++) {
+                    if (!myReader.hasNextLine())
+                        break;
+                    String line = myReader.nextLine();
+                    byteOut.write(line.getBytes(StandardCharsets.UTF_8));
+                    byteOut.write(Utils.newLine.getBytes(StandardCharsets.UTF_8));
+                }
+                myReader.close();
+            } catch (IOException e) {
+                return byteOut.toByteArray();   // Return byteArray as is
+            }
+        }
+
+        return byteOut.toByteArray();
     }
 }
