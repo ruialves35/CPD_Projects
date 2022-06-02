@@ -69,15 +69,18 @@ public class MembershipService implements ClusterMembership {
      */
     public void updateMembershipCounter(int newCounter) {
         this.membershipCounter = newCounter;
+        String filePath = this.folderPath + Constants.membershipCounterFileName;
 
-        try {
-            File memberCounter = new File(this.folderPath + Constants.membershipCounterFileName);
-            FileWriter counterWriter;
-            counterWriter = new FileWriter(memberCounter, false);
-            counterWriter.write(String.valueOf(newCounter));
-            counterWriter.close();
-        } catch (IOException e) {
-            throw new RuntimeException(e);
+        synchronized (filePath.intern()) {
+            try {
+                File memberCounter = new File(filePath);
+                FileWriter counterWriter;
+                counterWriter = new FileWriter(memberCounter, false);
+                counterWriter.write(String.valueOf(newCounter));
+                counterWriter.close();
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
         }
     }
 
@@ -198,32 +201,39 @@ public class MembershipService implements ClusterMembership {
 
     private void initializeNodeFiles() {
         try {
-            File memberCounter = new File(this.folderPath + Constants.membershipCounterFileName);
+            String counterPath = this.folderPath + Constants.membershipCounterFileName;
 
-            boolean foundCounter = false;
-            if (!memberCounter.createNewFile()) {
-                // Recover membership counter
-                Scanner counterScanner = new Scanner(memberCounter);
-                if (counterScanner.hasNextInt()) {
-                    this.membershipCounter = counterScanner.nextInt();
-                    foundCounter = true;
+            synchronized (counterPath.intern()) {
+                File memberCounter = new File(counterPath);
+                boolean foundCounter = false;
+                if (!memberCounter.createNewFile()) {
+                    // Recover membership counter
+                    Scanner counterScanner = new Scanner(memberCounter);
+                    if (counterScanner.hasNextInt()) {
+                        this.membershipCounter = counterScanner.nextInt();
+                        foundCounter = true;
+                    }
+
+                    counterScanner.close();
                 }
-
-                counterScanner.close();
-            }
-            if (!foundCounter) {
-                // Create file and store membership counter
-                FileWriter counterWriter = new FileWriter(memberCounter, false);
-                counterWriter.write(String.valueOf(this.membershipCounter));
-                counterWriter.close();
+                if (!foundCounter) {
+                    // Create file and store membership counter
+                    FileWriter counterWriter = new FileWriter(memberCounter, false);
+                    counterWriter.write(String.valueOf(this.membershipCounter));
+                    counterWriter.close();
+                }
             }
 
-            File memberLog = new File(this.folderPath + Constants.membershipLogFileName);
+            String logPath = this.folderPath + Constants.membershipLogFileName;
 
-            // Set initial log to be the current node
-            FileWriter writer = new FileWriter(memberLog, false);
-            writer.write(String.format("%s %d", this.nodeId, this.membershipCounter));
-            writer.close();
+            synchronized (logPath.intern()) {
+                File memberLog = new File(logPath);
+
+                // Set initial log to be the current node
+                FileWriter writer = new FileWriter(memberLog, false);
+                writer.write(String.format("%s %d", this.nodeId, this.membershipCounter));
+                writer.close();
+            }
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
@@ -234,51 +244,55 @@ public class MembershipService implements ClusterMembership {
      * for that nodeId
      */
     public void addLog(String newNodeId, int newMemberCounter) {
-        try {
-            File file = new File(this.folderPath + Constants.membershipLogFileName);
-            boolean isDeprecatedLog = false;
+        String logPath = this.folderPath + Constants.membershipLogFileName;
 
-            FileReader fr = new FileReader(file); // reads the file
-            BufferedReader br = new BufferedReader(fr);
-            String line;
+        synchronized (logPath.intern()) {
+            try {
+                File file = new File(logPath);
+                boolean isDeprecatedLog = false;
 
-            // Check if there is a more recent log for this node
-            while ((line = br.readLine()) != null) {
-                String[] lineData = line.split(" ");
-                String lineId = lineData[0];
-                if (newNodeId.equals(lineId)) {
-                    int lineCounter = Integer.parseInt(lineData[1]);
-                    if (lineCounter >= newMemberCounter)
-                        isDeprecatedLog = true;
-                    break;
+                FileReader fr = new FileReader(file); // reads the file
+                BufferedReader br = new BufferedReader(fr);
+                String line;
+
+                // Check if there is a more recent log for this node
+                while ((line = br.readLine()) != null) {
+                    String[] lineData = line.split(" ");
+                    String lineId = lineData[0];
+                    if (newNodeId.equals(lineId)) {
+                        int lineCounter = Integer.parseInt(lineData[1]);
+                        if (lineCounter >= newMemberCounter)
+                            isDeprecatedLog = true;
+                        break;
+                    }
                 }
-            }
 
-            if (!isDeprecatedLog) {
-                List<String> filteredFile = new ArrayList<>();
+                if (!isDeprecatedLog) {
+                    List<String> filteredFile = new ArrayList<>();
 
-                filteredFile.add(String.format("%s %d", newNodeId, newMemberCounter));
-                filteredFile.addAll(
-                        Files.lines(file.toPath()).filter(streamLine -> {
-                            Optional<String> optId = Arrays.stream(streamLine.split(" ")).findFirst();
-                            String rowId = optId.orElse("");
-                            return !newNodeId.equals(rowId);
-                        }).toList());
+                    filteredFile.add(String.format("%s %d", newNodeId, newMemberCounter));
+                    filteredFile.addAll(
+                            Files.lines(file.toPath()).filter(streamLine -> {
+                                Optional<String> optId = Arrays.stream(streamLine.split(" ")).findFirst();
+                                String rowId = optId.orElse("");
+                                return !newNodeId.equals(rowId);
+                            }).toList());
 
-                Files.write(file.toPath(), filteredFile, StandardOpenOption.WRITE,
-                        StandardOpenOption.TRUNCATE_EXISTING);
+                    Files.write(file.toPath(), filteredFile, StandardOpenOption.WRITE,
+                            StandardOpenOption.TRUNCATE_EXISTING);
 
-                // If the newMemberCounter is even, it is already added by the nodeMap received
-                if (!isClusterMember(newMemberCounter)) {
-                    // Remove the node from the nodeMap
-                    this.removeNodeFromMap(newNodeId);
+                    // If the newMemberCounter is even, it is already added by the nodeMap received
+                    if (!isClusterMember(newMemberCounter)) {
+                        // Remove the node from the nodeMap
+                        this.removeNodeFromMap(newNodeId);
+                    }
                 }
+            } catch (FileNotFoundException e) {
+                System.out.println("An error occurred.");
+                e.printStackTrace();
+            } catch (IOException e) {
+                e.printStackTrace();
             }
-        } catch (FileNotFoundException e) {
-            System.out.println("An error occurred.");
-            e.printStackTrace();
-        } catch (IOException e) {
-            e.printStackTrace();
         }
     }
 
@@ -290,16 +304,20 @@ public class MembershipService implements ClusterMembership {
             byteOut.write(this.nodeId.getBytes(StandardCharsets.UTF_8));
             byteOut.write(Utils.newLine.getBytes(StandardCharsets.UTF_8));
 
-            File file = new File(this.folderPath + Constants.membershipLogFileName);
-            Scanner myReader = new Scanner(file);
-            for (int i = 0; i < Constants.numLogEvents; i++) {
-                if (!myReader.hasNextLine())
-                    break;
-                String line = myReader.nextLine();
-                byteOut.write(line.getBytes(StandardCharsets.UTF_8));
-                byteOut.write(Utils.newLine.getBytes(StandardCharsets.UTF_8));
+            String logPath = this.folderPath + Constants.membershipLogFileName;
+
+            synchronized (logPath.intern()) {
+                File file = new File(logPath);
+                Scanner myReader = new Scanner(file);
+                for (int i = 0; i < Constants.numLogEvents; i++) {
+                    if (!myReader.hasNextLine())
+                        break;
+                    String line = myReader.nextLine();
+                    byteOut.write(line.getBytes(StandardCharsets.UTF_8));
+                    byteOut.write(Utils.newLine.getBytes(StandardCharsets.UTF_8));
+                }
+                myReader.close();
             }
-            myReader.close();
 
             byteOut.write(Utils.newLine.getBytes(StandardCharsets.UTF_8));
 

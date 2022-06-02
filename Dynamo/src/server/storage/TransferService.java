@@ -113,35 +113,37 @@ public class TransferService {
 
     /**
      * Creates a Message request to save a file
-     * @param file file to be saved
+     * @param filePath path to the file to be saved
      * @return if everything went well Message with saveFile action,
      *         otherwise Message with error action
      */
-    private Message createMsgFromFile(File file) {
-        try (FileInputStream fis = new FileInputStream(file.getPath())) {
+    private Message createMsgFromFile(String filePath) {
+        synchronized (filePath.intern()) {
+            File file = new File(filePath);
+            try (FileInputStream fis = new FileInputStream(file.getPath())) {
 
-            final ByteArrayOutputStream out = new ByteArrayOutputStream();
-            out.write(file.getName().getBytes(StandardCharsets.UTF_8));
-            out.write("\r\n".getBytes(StandardCharsets.UTF_8));
-            out.write(fis.readAllBytes());
+                final ByteArrayOutputStream out = new ByteArrayOutputStream();
+                out.write(file.getName().getBytes(StandardCharsets.UTF_8));
+                out.write("\r\n".getBytes(StandardCharsets.UTF_8));
+                out.write(fis.readAllBytes());
 
-            return new Message("REQ", "saveFile", out.toByteArray());
-        } catch (IOException e) {
-            System.out.println("Error opening file in get operation: " + file.getPath());
-            throw new RuntimeException(e);
+                return new Message("REQ", "saveFile", out.toByteArray());
+            } catch (IOException e) {
+                System.out.println("Error opening file in get operation: " + file.getPath());
+                throw new RuntimeException(e);
+            }
         }
     }
 
     /**
-     * Sends the files in nodeFiles to a node
+     * Sends the files in fileNames to a node
      * @param fileNames array with the file names to send
      * @param node node to which we want to send the files
      */
     private void sendNodeFiles(ArrayList<String> fileNames, Node node) {
         for (String fileName : fileNames) {
             try {
-                File file = new File(storageService.getDbFolder() + "/" + fileName);
-                Message msg = createMsgFromFile(file);
+                Message msg = createMsgFromFile(storageService.getDbFolder() + fileName);
                 Sender.sendTCPMessage(msg.toBytes(), node.getId(), node.getPort());
             } catch (IOException e) {
                 System.out.println("Could not send file to node: " + node.getId());
