@@ -72,7 +72,7 @@ public class UDPListener implements Runnable {
 
             switch (message.getAction()) {
                 case "electionPing" -> {
-                    System.out.println("Received election ping from " + nodeId);
+                    this.membershipService.handleElectionPing(message);
                 }
                 case "join" -> {
                     this.handleJoinLeave(nodeId, br, true);
@@ -94,6 +94,6 @@ public class UDPListener implements Runnable {
                 membershipCounter);
 
         if (isJoin) this.membershipService.handleJoinRequest(nodeId, tcpPort, membershipCounter);
-        else this.membershipService.handleLeaveRequest(nodeId, membershipCounter);
+        else this.membershipService.handleLeaveRequest(nodeId, membershipCounter, tcpPort);
     }
 }

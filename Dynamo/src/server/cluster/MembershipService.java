@@ -51,7 +51,7 @@ public class MembershipService implements ClusterMembership {
         if (this.membershipCounter == 0 || !isClusterMember(this.membershipCounter)) {
             if (this.membershipCounter != 0) // Edge case for the first join
                 this.updateMembershipCounter(this.membershipCounter + 1);
-            this.addLog(this.nodeId, this.membershipCounter);
+
             this.multicastJoin();
 
             // Send election request
@@ -69,7 +69,7 @@ public class MembershipService implements ClusterMembership {
         if (isClusterMember(this.membershipCounter)) {
             this.removeNodeFromMap(this.nodeId);
             this.updateMembershipCounter(this.membershipCounter + 1);
-            this.addLog(this.nodeId, this.membershipCounter);
+            this.addLog(this.nodeId, this.membershipCounter, this.tcpPort);
             this.multicastLeave();
         }
     }
@@ -104,7 +104,7 @@ public class MembershipService implements ClusterMembership {
 
         // Add this node information
         this.addNodeToMap(this.nodeId, this.tcpPort);
-        this.addLog(this.nodeId, this.membershipCounter);
+        this.addLog(this.nodeId, this.membershipCounter, this.tcpPort);
 
         int retransmissionCounter = 0;
         while (retransmissionCounter < maxRetransmissions) {
@@ -256,11 +256,11 @@ public class MembershipService implements ClusterMembership {
      * Adds a new log to the beginning of the membership log removing existing logs
      * for that nodeId
      */
-    public void addLog(String newNodeId, int newMemberCounter) {
+    public void addLog(String newNodeId, int newMemberCounter, int newNodePort) {
         String logPath = this.folderPath + Constants.membershipLogFileName;
 
-        synchronized (logPath.intern()) {
-            try {
+        try {
+            synchronized (logPath.intern()) {
                 File file = new File(logPath);
                 boolean isDeprecatedLog = false;
 
@@ -293,19 +293,22 @@ public class MembershipService implements ClusterMembership {
 
                     Files.write(file.toPath(), filteredFile, StandardOpenOption.WRITE,
                             StandardOpenOption.TRUNCATE_EXISTING);
-
-                    // If the newMemberCounter is even, it is already added by the nodeMap received
-                    if (!isClusterMember(newMemberCounter)) {
-                        // Remove the node from the nodeMap
-                        this.removeNodeFromMap(newNodeId);
-                    }
-                }
-            } catch (FileNotFoundException e) {
-                System.out.println("An error occurred.");
-                e.printStackTrace();
-            } catch (IOException e) {
-                e.printStackTrace();
+                } 
             }
+
+            if (isClusterMember(newMemberCounter)) {
+                // if the nodeMap does not contain this node
+                if ((newNodePort != Constants.invalidPort) && !this.nodeMap.containsKey(newNodeId))
+                    this.nodeMap.put(Utils.generateKey(newNodeId), new Node(newNodeId, newNodePort));
+            } else {
+                // Remove the node from the nodeMap
+                this.removeNodeFromMap(newNodeId);
+            }
+        } catch (FileNotFoundException e) {
+            System.out.println("An error occurred.");
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
         }
     }
 
@@ -345,7 +348,7 @@ public class MembershipService implements ClusterMembership {
 
         // Updates view of the cluster membership and adds the log
         this.addNodeToMap(nodeId, tcpPort);
-        this.addLog(nodeId, membershipCounter);
+        this.addLog(nodeId, membershipCounter, tcpPort);
 
         // Updated membership info TODO: CHECK IF THIS IS OK
         this.repliedNodes.clear();
@@ -365,10 +368,10 @@ public class MembershipService implements ClusterMembership {
         }
     }
 
-    public void handleLeaveRequest(String nodeId,  int membershipCounter) {
+    public void handleLeaveRequest(String nodeId,  int membershipCounter, int tcpPort) {
         // Updates view of the cluster membership and adds the log
         this.removeNodeFromMap(nodeId);
-        this.addLog(nodeId, membershipCounter);
+        this.addLog(nodeId, membershipCounter, tcpPort);
 
         // Updated membership info TODO: CHECK IF THIS IS OK
         this.repliedNodes.clear();
@@ -408,7 +411,7 @@ public class MembershipService implements ClusterMembership {
             String[] logData = newLog.split(" ");
             String logId = logData[0];
             int logCounter = Integer.parseInt(logData[1]);
-            this.addLog(logId, logCounter);
+            this.addLog(logId, logCounter, Constants.invalidPort);  // nodePort will not be used
         }
 
         System.out.println("Received membership Logs: " + membershipLogs + "\nnodeMap: " + this.getNodeMap());
@@ -475,6 +478,40 @@ public class MembershipService implements ClusterMembership {
                  }
                 return;
             }
+
+            while ((line = br.readLine()) != null) {
+                String[] logData = line.split(" ");
+                membershipLogs.put(logData[0], Integer.parseInt(logData[1]));
+            }
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+
+        if (LogHandler.isMoreRecent(membershipLogs, newNodeId, this.folderPath, this.nodeId)) {
+            // Propagate the message to the next node?
+            System.out.println("Log is more recent! propagate to next node");
+
+            // Check if this node was the previous leader
+            if (this.isElected) {
+                this.isElected = false;
+                if (this.electionPingThread != null) this.electionPingThread.cancel(true);
+            }
+
+            // Send election request
+            ElectionService.propagateRequest(message, this.getNextNode(Utils.generateKey(this.nodeId)));
+        }
+    }
+
+    public void handleElectionPing(Message message) {
+        System.out.println("Received election ping.");
+
+        InputStream is = new ByteArrayInputStream(message.getBody());
+        BufferedReader br = new BufferedReader(new InputStreamReader(is));
+
+        String line, newNodeId;
+        final HashMap<String, Integer> membershipLogs = new HashMap<>();
+        try {
+            newNodeId = br.readLine();
 
             while ((line = br.readLine()) != null) {
                 String[] logData = line.split(" ");
