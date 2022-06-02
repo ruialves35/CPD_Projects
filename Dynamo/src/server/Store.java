@@ -5,6 +5,7 @@ import server.cluster.Node;
 import server.network.TCPListener;
 import server.network.UDPListener;
 import server.storage.StorageService;
+import server.storage.TombstoneManager;
 import server.storage.TransferService;
 
 import java.util.Scanner;
@@ -24,11 +25,12 @@ public class Store {
         final String nodeId = args[2];
         final int storePort = Integer.parseInt(args[3]);
 
+        final ExecutorService executorService = Executors.newCachedThreadPool();
+
         final MembershipService membershipService = new MembershipService(multicastIPAddr, multicastIPPort, nodeId,
                 storePort);
-        final StorageService storageService = new StorageService(membershipService.getNodeMap(), nodeId);
-        final TransferService transferService = new TransferService(membershipService.getNodeMap(), storageService, new Node(nodeId, storePort));
-        final ExecutorService executorService = Executors.newCachedThreadPool();
+        final StorageService storageService = new StorageService(membershipService.getNodeMap(), nodeId, executorService);
+        final TransferService transferService = new TransferService(storageService, new Node(nodeId, storePort));
 
         try {
             executorService.submit(new TCPListener(storageService, membershipService, transferService, executorService,
@@ -38,6 +40,7 @@ public class Store {
             transferService.join();
             executorService
                     .submit(new UDPListener(storageService, membershipService, transferService, executorService));
+            executorService.submit(new TombstoneManager(storageService.getDbFolder()));
         } catch (RuntimeException re) {
             System.err.println(re.getMessage());
             // Clear ExecutorService threads?

@@ -2,66 +2,114 @@ package server.storage;
 
 import common.Message;
 import common.Sender;
-import common.Utils;
+import server.Constants;
 import server.cluster.Node;
 
 import java.io.*;
 import java.nio.charset.StandardCharsets;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Objects;
 
 public class TransferService {
-    private final TreeMap<String, Node> nodeMap;
     private final StorageService storageService;
     private final Node node;
-    public TransferService(TreeMap<String, Node> nodeMap, StorageService storageService, Node node) {
-        this.nodeMap = nodeMap;
+    public TransferService(StorageService storageService, Node node) {
         this.storageService = storageService;
         this.node = node;
     }
 
-    public boolean join() {
-        String key = Utils.generateKey(this.node.getId());
-        Node nextNode = this.getNextNode(key);
-        String nextKey = Utils.generateKey(nextNode.getId());
-        ArrayList<String> nextNodeFiles;
+    public void join() {
+        // Cluster is not fulfilling the replication factor -> replicate all files
+        if (Constants.replicationFactor >= storageService.getNumberOfNodes()) {
+            Node curNode = storageService.getNextNode(this.node);
+            boolean copyOwnFiles = true;
+            while (!curNode.getId().equals(this.node.getId())) {
+                ArrayList<String> curNodeFiles = this.getNodeFileNames(curNode);
+                if (copyOwnFiles) {
+                    ArrayList<String> filesToTransfer = filterResponsibleFiles(curNodeFiles, this.node);
+                    getFiles(filesToTransfer, curNode, false);
+                    copyOwnFiles = false;
+                }
 
-        if (nextKey.equals(key)) return true;
-
-        try {
-            nextNodeFiles = this.getNodeFilesNames(nextNode);
-        } catch (IOException e) {
-            System.out.println("Could not get the files from the next node on Join.");
-            throw new RuntimeException(e);
+                ArrayList<String> filesToTransfer = filterResponsibleFiles(curNodeFiles, curNode);
+                getFiles(filesToTransfer, curNode, false);
+                curNode = storageService.getNextNode(curNode);
+            }
+            return;
         }
 
-        if (processJoin(nextNodeFiles, this.node, nextNode)) {
-            System.out.println("Sent files from " + nextNode.getId() + " to " + this.node.getId());
-        } else {
-            System.out.println("Error sending files to joined node");
-            return false;
-        }
+        // Transfer replicas to the new node (including own files)
+        Node responsibleNode = this.node;
+        Node replicaNode = this.node;
+        for (int i = 0; i < Constants.replicationFactor; ++i)
+            replicaNode = this.storageService.getNextNode(replicaNode);
 
-        return true;
+        for (int i = 0; i < Constants.replicationFactor; ++i) {
+            ArrayList<String> replicaNodeFiles = this.getNodeFileNames(replicaNode);
+            ArrayList<String> filesToReplicate = filterResponsibleFiles(replicaNodeFiles, responsibleNode);
+            getFiles(filesToReplicate, replicaNode, true);
+
+            replicaNode = this.storageService.getPreviousNode(replicaNode);
+            responsibleNode = this.storageService.getPreviousNode(responsibleNode);
+        }
     }
 
     public void leave() {
-        String key = Utils.generateKey(this.node.getId());
+        // If there are less than replicationFactor nodes left then the nodes already have all the files
+        if (Constants.replicationFactor >= storageService.getNumberOfNodes())
+            return;
 
-        String folderPath = "database/" + key + "/";
-        File folder = new File(folderPath);
-        File[] nodeFiles = folder.listFiles();
+        File folder = new File(storageService.getDbFolder());
+        ArrayList<String> folderFiles = new ArrayList<>(List.of(Objects.requireNonNull(folder.list())));
 
-        Node nextNode = this.getNextNode(key);
+        Node curNode = this.node;
+        Node receivingNode = curNode;
 
-        if (nodeFiles == null){
-            System.out.println("Node had no files to send on leave");
-        } else if (sendNodeFiles(nodeFiles, nextNode)) {
-            System.out.println("Sent nodes from the leaving node successfully");
-        } else {
-            System.out.println("Error sending files from leaving node to next node");
+        for (int i = 0; i < Constants.replicationFactor; ++i)
+            receivingNode = this.storageService.getNextNode(receivingNode);
+
+        for (int i = 0; i < Constants.replicationFactor; ++i) {
+            ArrayList<String> filesToTransfer = filterResponsibleFiles(folderFiles, curNode);
+            sendNodeFiles(filesToTransfer, receivingNode);
+            curNode = storageService.getPreviousNode(curNode);
+            receivingNode = storageService.getPreviousNode(receivingNode);
         }
     }
 
+    /**
+     * Recovers from a crash by updating the node's files and deleting invalid ones
+     */
+    private void recoverFromCrash() {
+        if (storageService.getNumberOfNodes() == 1) return;
+
+        // Copy own files
+        Node nextNode = storageService.getNextNode(this.node);
+        ArrayList<String> nextNodeFiles = this.getNodeFileNames(nextNode);
+        ArrayList<String> filesToTransfer = filterResponsibleFiles(nextNodeFiles, this.node);
+
+        List<String> validFiles = new ArrayList<>(filesToTransfer);
+        getFiles(filesToTransfer, nextNode, false);
+
+        // get replicas from previous replicationFactor nodes
+        Node curNode = storageService.getPreviousNode(this.node);
+        for (int i = 0; i < Constants.replicationFactor - 1; ++i) {
+            if (curNode.getId().equals(this.node.getId())) break;
+
+            ArrayList<String> curNodeFiles = this.getNodeFileNames(curNode);
+            filesToTransfer = filterResponsibleFiles(curNodeFiles, curNode);
+            validFiles.addAll(filesToTransfer);
+
+            getFiles(filesToTransfer, curNode, false);
+            curNode = storageService.getPreviousNode(curNode);
+        }
+
+        // delete invalid files
+        List<String> allFiles = storageService.getFiles();
+        for (String file : allFiles) {
+            if (!validFiles.contains(file)) storageService.deleteFilePermanently(file);
+        }
+    }
 
     /**
      * Creates a Message request to save a file
@@ -69,7 +117,7 @@ public class TransferService {
      * @return if everything went well Message with saveFile action,
      *         otherwise Message with error action
      */
-    public Message createMsgFromFile(File file) {
+    private Message createMsgFromFile(File file) {
         try (FileInputStream fis = new FileInputStream(file.getPath())) {
 
             final ByteArrayOutputStream out = new ByteArrayOutputStream();
@@ -81,104 +129,85 @@ public class TransferService {
         } catch (IOException e) {
             System.out.println("Error opening file in get operation: " + file.getPath());
             throw new RuntimeException(e);
-            //return new Message("REP", "error", null);
         }
     }
-
-
-    /**
-     * Processes a join by checking if next node has files from this node
-     * if it has, then request to get and delete those files, and store
-     * them in this node
-     * @param nextNodeFiles array with the name of the files stored in nextNode
-     * @param node node that's joining or leaving
-     * @param nextNode nextNode to this node in the membership
-     * @return true if no errors occur, false otherwise
-     */
-    public boolean processJoin(ArrayList<String> nextNodeFiles, Node node, Node nextNode) {
-        if (nextNodeFiles.size() != 0) {
-            for (final String fileName : nextNodeFiles) {
-                try {
-                    String key = Utils.generateKey(node.getId());
-                    String nextNodeKey = Utils.generateKey(nextNode.getId());
-
-                    // file possibly belongs to the node
-                    if (fileName.compareTo(key) <= 0) {
-
-                        if (key.compareTo(nextNodeKey) < 0 || fileName.compareTo(nextNodeKey) > 0) {
-                            Message requestFile = new Message("REQ", "getAndDelete", fileName.getBytes(StandardCharsets.UTF_8));
-                            byte[] response = Sender.sendTCPMessage(requestFile.toBytes(), nextNode.getId(), nextNode.getPort());
-                            Message responseMsg = new Message(response);
-                            storageService.saveFile(key, responseMsg.getBody());
-                        }
-
-                    }
-
-                } catch (IOException e) {
-                    System.out.println("Could not get the files from the next node on Join.");
-                    throw new RuntimeException(e);
-                }
-            }
-        }
-        return true;
-    }
-
 
     /**
      * Sends the files in nodeFiles to a node
-     * @param nodeFiles array with the files to send
+     * @param fileNames array with the file names to send
      * @param node node to which we want to send the files
-     * @return true if sent all files, false otherwise
      */
-    public boolean sendNodeFiles(File[] nodeFiles, Node node) {
-        for (final File file : nodeFiles) {
-            Message msg = createMsgFromFile(file);
+    private void sendNodeFiles(ArrayList<String> fileNames, Node node) {
+        for (String fileName : fileNames) {
             try {
+                File file = new File(storageService.getDbFolder() + "/" + fileName);
+                Message msg = createMsgFromFile(file);
                 Sender.sendTCPMessage(msg.toBytes(), node.getId(), node.getPort());
             } catch (IOException e) {
-                System.out.println("Could not send TCP message to send files to node " + node.getId());
+                System.out.println("Could not send file to node: " + node.getId());
                 throw new RuntimeException(e);
             }
         }
-        return true;
+    }
+
+    private void getFiles(ArrayList<String> fileNames, Node node, boolean deleteFiles) {
+        for (String fileName : fileNames) {
+            try {
+                Message msg = new Message("REQ", deleteFiles ? "getAndDelete" : "get",
+                        fileName.getBytes(StandardCharsets.UTF_8));
+
+                byte[] response = Sender.sendTCPMessage(msg.toBytes(), node.getId(), node.getPort());
+                Message responseMsg = new Message(response);
+
+                DataInputStream dis = new DataInputStream(new ByteArrayInputStream(responseMsg.getBody()));
+                long tombTimestamp = dis.readLong();
+                //noinspection ResultOfMethodCallIgnored
+                dis.skip(8);
+                byte[] file = dis.readAllBytes();
+
+                storageService.saveFile(fileName, file);
+                if (tombTimestamp != 0)
+                    storageService.saveTombstone(fileName, tombTimestamp);
+            } catch (IOException e) {
+                System.out.println("Could not get the files from the next node on Join.");
+                throw new RuntimeException(e);
+            }
+        }
     }
 
     /**
-     *  Gets next node to node with key. If there is no node with higher key value,
-     *  then gets the first node, so it behaves like a circular map
-     * @param key key of the node that we want to get the next node
-     * @return Next Node
-     */
-    public Node getNextNode(String key) {
-        // Get the next node to store the files
-        Map.Entry<String, Node> nextEntry = nodeMap.higherEntry(key);
-        if (nextEntry == null) nextEntry = nodeMap.firstEntry();
-        Node nextNode = nextEntry.getValue();
-        return nextNode;
-    }
-
-
-    /**
-     * gets the name of the files in a node by requesting it throw TCP
+     * gets the name of the files in a node by requesting it through TCP
      * @param node node from which we want to get the files' names
      * @return array with the name of the files stored in node's database
      */
-    public ArrayList<String> getNodeFilesNames(Node node) throws IOException {
-        Message message = new Message("REQ", "getFiles", Utils.generateKey(node.getId()).getBytes(StandardCharsets.UTF_8));
+    private ArrayList<String> getNodeFileNames(Node node) {
+        try {
+            Message message = new Message("REQ", "getFiles", null);
+            Message reply = new Message(Sender.sendTCPMessage(message.toBytes(), node.getId(), node.getPort()));
+            final BufferedReader reader = new BufferedReader(new InputStreamReader(new ByteArrayInputStream(reply.getBody())));
 
-        byte[] response = Sender.sendTCPMessage(message.toBytes(), node.getId(), node.getPort());
+            ArrayList<String> fileNames = new ArrayList<>();
+            String line;
+            while ((line = reader.readLine()) != null) {
+                fileNames.add(line);
+            }
 
-        Message reply = new Message(response);
+            return fileNames;
+        } catch (IOException e) {
+            System.out.println("Error getting files from node: " + node.getId());
+            throw new RuntimeException(e);
+        }
+    }
 
-        final BufferedReader reader = new BufferedReader(new InputStreamReader(new ByteArrayInputStream(reply.getBody())));
-
-        ArrayList<String> lines = new ArrayList<>();
-        String line;
-        while ((line = reader.readLine()) != null) {
-            lines.add(line);
+    private ArrayList<String> filterResponsibleFiles(ArrayList<String> fileNames, Node node) {
+        final ArrayList<String> filteredFileNames = new ArrayList<>();
+        for (String fileName : fileNames) {
+            if (storageService.getResponsibleNode(fileName).getId().equals(node.getId())) {
+                filteredFileNames.add(fileName);
+            }
         }
 
-        return lines;
+        return filteredFileNames;
     }
 
 }

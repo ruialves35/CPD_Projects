@@ -1,9 +1,7 @@
 package server.network;
 
 import common.Message;
-import common.Utils;
 import server.cluster.MembershipService;
-import server.cluster.Node;
 import server.storage.StorageService;
 import server.storage.TransferService;
 
@@ -12,9 +10,7 @@ import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.TreeMap;
+import java.util.List;
 import java.util.concurrent.ExecutorService;
 
 public class TCPListener implements Runnable {
@@ -82,7 +78,7 @@ public class TCPListener implements Runnable {
         final BufferedReader reader = new BufferedReader(new InputStreamReader(
                 new ByteArrayInputStream(message.getBody())));
 
-        Message reply = null;
+        Message reply;
         switch (message.getAction()) {
             case "join" -> {
                 this.membershipService.handleMembershipResponse(message);
@@ -105,22 +101,21 @@ public class TCPListener implements Runnable {
                 reply = storageService.getAndDelete(key);
             }
             case "getFiles" -> {
-                String key = reader.readLine();
-
-                File[] nodeFiles = storageService.getFiles(key);
+                List<String> nodeFiles = storageService.getFiles();
                 StringBuilder sb = new StringBuilder();
 
                 if (nodeFiles != null) {
-                    for (File file : nodeFiles) {
-                        sb.append(file.getName()).append("\r\n");
+                    for (String fileName : nodeFiles) {
+                        sb.append(fileName).append("\r\n");
                     }
                 }
 
                 reply = new Message("REP", "ok", sb.toString().getBytes(StandardCharsets.UTF_8));
             }
             case "delete" -> reply = storageService.delete(new String(message.getBody()));
+            case "safeDelete" -> reply = storageService.safeDelete(new String(message.getBody()));
             default -> {
-                System.out.println("Invalid event received!");
+                System.out.println("Invalid event received! - " + message.getAction());
                 return;
             }
         }

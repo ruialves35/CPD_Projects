@@ -3,6 +3,8 @@ package server.cluster;
 import common.Message;
 import common.Sender;
 import common.Utils;
+import server.Constants;
+
 import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -64,14 +66,12 @@ public class MembershipService implements ClusterMembership {
 
     /**
      * Updates the membershipCounter value and stores it in non-volatile memory
-     * 
-     * @param newCounter
      */
     public void updateMembershipCounter(int newCounter) {
         this.membershipCounter = newCounter;
 
         try {
-            File memberCounter = new File(this.folderPath + Utils.membershipCounterFileName);
+            File memberCounter = new File(this.folderPath + Constants.membershipCounterFileName);
             FileWriter counterWriter;
             counterWriter = new FileWriter(memberCounter, false);
             counterWriter.write(String.valueOf(newCounter));
@@ -97,16 +97,16 @@ public class MembershipService implements ClusterMembership {
             int elapsedTime = 0;
             try {
                 Sender.sendMulticast(msg.toBytes(), this.multicastIpAddr, this.multicastIPPort);
-                while (elapsedTime < Utils.timeoutTime) {
-                    Thread.sleep(Utils.timeoutStepTime);
-                    if (this.membershipReplyNodes.size() >= Utils.numMembershipMessages) {
+                while (elapsedTime < Constants.timeoutTime) {
+                    Thread.sleep(Constants.multicastStepTime);
+                    if (this.membershipReplyNodes.size() >= Constants.numMembershipMessages) {
                         this.membershipReplyNodes.clear();
                         this.retransmissionCounter = 0;
                         System.out.println("New Node joined the distributed store");
                         return;
                     }
 
-                    elapsedTime += Utils.timeoutStepTime;
+                    elapsedTime += Constants.multicastStepTime;
                 }
             } catch (InterruptedException | IOException e) {
                 throw new RuntimeException(e);
@@ -149,8 +149,6 @@ public class MembershipService implements ClusterMembership {
     }
 
     /**
-     *
-     * @param counter
      * @return true if a node is a member of the nodeMap. False otherwise.
      */
     public static boolean isClusterMember(int counter) {
@@ -167,9 +165,6 @@ public class MembershipService implements ClusterMembership {
 
     /**
      * Adds a new node to the nodeMap.
-     * 
-     * @param newNodeId
-     * @param newNodePort
      */
     public void addNodeToMap(String newNodeId, int newNodePort) {
         String key = Utils.generateKey(newNodeId);
@@ -203,15 +198,14 @@ public class MembershipService implements ClusterMembership {
 
     private void initializeNodeFiles() {
         try {
-            File memberCounter = new File(this.folderPath + Utils.membershipCounterFileName);
+            File memberCounter = new File(this.folderPath + Constants.membershipCounterFileName);
 
             boolean foundCounter = false;
             if (!memberCounter.createNewFile()) {
                 // Recover membership counter
                 Scanner counterScanner = new Scanner(memberCounter);
                 if (counterScanner.hasNextInt()) {
-                    int counter = counterScanner.nextInt();
-                    this.membershipCounter = counter;
+                    this.membershipCounter = counterScanner.nextInt();
                     foundCounter = true;
                 }
 
@@ -224,7 +218,7 @@ public class MembershipService implements ClusterMembership {
                 counterWriter.close();
             }
 
-            File memberLog = new File(this.folderPath + Utils.membershipLogFileName);
+            File memberLog = new File(this.folderPath + Constants.membershipLogFileName);
 
             // Set initial log to be the current node
             FileWriter writer = new FileWriter(memberLog, false);
@@ -241,7 +235,7 @@ public class MembershipService implements ClusterMembership {
      */
     public void addLog(String newNodeId, int newMemberCounter) {
         try {
-            File file = new File(this.folderPath + Utils.membershipLogFileName);
+            File file = new File(this.folderPath + Constants.membershipLogFileName);
             boolean isDeprecatedLog = false;
 
             FileReader fr = new FileReader(file); // reads the file
@@ -296,9 +290,9 @@ public class MembershipService implements ClusterMembership {
             byteOut.write(this.nodeId.getBytes(StandardCharsets.UTF_8));
             byteOut.write(Utils.newLine.getBytes(StandardCharsets.UTF_8));
 
-            File file = new File(this.folderPath + Utils.membershipLogFileName);
+            File file = new File(this.folderPath + Constants.membershipLogFileName);
             Scanner myReader = new Scanner(file);
-            for (int i = 0; i < Utils.numLogEvents; i++) {
+            for (int i = 0; i < Constants.numLogEvents; i++) {
                 if (!myReader.hasNextLine())
                     break;
                 String line = myReader.nextLine();
@@ -338,7 +332,7 @@ public class MembershipService implements ClusterMembership {
         this.repliedNodes.clear();
         this.repliedNodes.add(Utils.generateKey(nodeId));
 
-        final int randomWait = new Random().nextInt(Utils.maxResponseTime);
+        final int randomWait = new Random().nextInt(Constants.maxResponseTime);
         try {
             Thread.sleep(randomWait);
 
@@ -353,7 +347,7 @@ public class MembershipService implements ClusterMembership {
     }
 
     public void handleMembershipResponse(Message message) {
-        if (this.getMembershipReplyNodes().size() >= Utils.numMembershipMessages)
+        if (this.getMembershipReplyNodes().size() >= Constants.numMembershipMessages)
             return;
 
         System.out.println("Received tcp reply to join");
