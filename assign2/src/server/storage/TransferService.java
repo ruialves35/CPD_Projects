@@ -115,11 +115,11 @@ public class TransferService {
 
     /**
      * Creates a Message request to save a file
-     * @param filePath path to the file to be saved
+     * @param fileName name of the file to be saved
      * @return if everything went well Message with saveFile action,
      *         otherwise Message with error action
      */
-    private Message createMsgFromFile(String fileName) {
+    private Message createMsgFromFile(String fileName) throws IOException {
         final String filePath = storageService.getDbFolder() + fileName;
         final ByteArrayOutputStream out = new ByteArrayOutputStream();
         final DataOutputStream dos = new DataOutputStream(out);
@@ -133,7 +133,7 @@ public class TransferService {
                 fileBytes = fis.readAllBytes();
             } catch (IOException e) {
                 System.out.println("Error opening file in createMsgFromFile: " + file.getPath());
-                throw new RuntimeException(e);
+                throw e;
             }
         }
 
@@ -168,7 +168,6 @@ public class TransferService {
                 Sender.sendTCPMessage(msg.toBytes(), node.getId(), node.getPort());
             } catch (IOException e) {
                 System.out.println("Could not send file to node: " + node.getId());
-                throw new RuntimeException(e);
             }
         }
     }
@@ -184,8 +183,7 @@ public class TransferService {
 
                 storageService.saveFile(fileName, responseMsg.getBody());
             } catch (IOException e) {
-                System.out.println("Could not get the files from the next node on Join.");
-                throw new RuntimeException(e);
+                System.out.println("Could not get the files from the node: " + node.getId());
             }
         }
     }
@@ -210,7 +208,7 @@ public class TransferService {
             return fileNames;
         } catch (IOException e) {
             System.out.println("Error getting files from node: " + node.getId());
-            throw new RuntimeException(e);
+            return new ArrayList<>();
         }
     }
 

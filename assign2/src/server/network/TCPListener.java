@@ -49,8 +49,6 @@ public class TCPListener implements Runnable {
                         istream.close();
                         ostream.close();
                     } catch (IOException e) {
-                        System.out.println("Error processing event");
-                        // TODO Handle specific errors
                         Message errorMsg = new Message(MessageTypes.REPLY.getCode(), "error", null);
                         try {
                             ostream.write(errorMsg.toBytes());

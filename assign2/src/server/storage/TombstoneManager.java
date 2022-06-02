@@ -52,7 +52,6 @@ public class TombstoneManager implements Runnable {
                     }
                 } catch (IOException e) {
                     System.out.println("Error opening tombstone file in manager: " + file.getName());
-                    throw new RuntimeException(e);
                 }
             }
         }
