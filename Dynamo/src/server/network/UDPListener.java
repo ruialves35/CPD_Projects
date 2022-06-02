@@ -64,27 +64,36 @@ public class UDPListener implements Runnable {
         InputStream is = new ByteArrayInputStream(message.getBody());
         BufferedReader br = new BufferedReader(new InputStreamReader(is));
 
-        String nodeId;
-        int tcpPort, membershipCounter;
         try {
-            nodeId = br.readLine();
-            tcpPort = Integer.parseInt(br.readLine());
-            membershipCounter = Integer.parseInt(br.readLine());
+            String nodeId = br.readLine();
+
+            // If processing message from himself
+            if (this.membershipService.getNodeId().equals(nodeId)) return;
+
+            switch (message.getAction()) {
+                case "electionPing" -> {
+                    System.out.println("Received election ping");
+                }
+                case "join" -> {
+                    this.handleJoinLeave(nodeId, br, true);
+                }
+                case "leave" -> {
+                    this.handleJoinLeave(nodeId, br, false);
+                }
+            }
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
+    }
 
-        // If processing message from himself
-        if (this.membershipService.getNodeId().equals(nodeId)) return;
-
+    private void handleJoinLeave(String nodeId, BufferedReader br, boolean isJoin) throws IOException {
+        int tcpPort, membershipCounter;
+        tcpPort = Integer.parseInt(br.readLine());
+        membershipCounter = Integer.parseInt(br.readLine());
         System.out.printf("Received message from: %s (port %d). Membership Counter: %d%n", nodeId, tcpPort,
                 membershipCounter);
 
-        switch (message.getAction()) {
-            case "join" -> this.membershipService.handleJoinRequest(nodeId, tcpPort, membershipCounter);
-            case "leave" -> {
-                this.membershipService.handleLeaveRequest(nodeId, membershipCounter);
-            }
-        }
+        if (isJoin) this.membershipService.handleJoinRequest(nodeId, tcpPort, membershipCounter);
+        else this.membershipService.handleLeaveRequest(nodeId, membershipCounter);
     }
 }

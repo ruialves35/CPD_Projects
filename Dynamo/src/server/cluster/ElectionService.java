@@ -17,10 +17,13 @@ public class ElectionService implements Runnable{
         final String multicastIPAddr;
         final int multicastPort;
 
-        public ElectionService(String folderPath, String multicastIPAddr, int multicastPort) {
+        final String nodeId;
+
+        public ElectionService(String nodeId, String folderPath, String multicastIPAddr, int multicastPort) {
                 this.folderPath = folderPath;
                 this.multicastIPAddr = multicastIPAddr;
                 this.multicastPort = multicastPort;
+                this.nodeId = nodeId;
         }
 
         public static void sendRequest(String nodeId, Node nextNode) {
@@ -59,8 +62,14 @@ public class ElectionService implements Runnable{
         public void run() {
                 try {
                         while (true) {
+                                ByteArrayOutputStream byteOut = new ByteArrayOutputStream();
+                                String nodeIdLine = nodeId + Utils.newLine;
+                                byteOut.write(nodeIdLine.getBytes(StandardCharsets.UTF_8));
+
                                 byte[] electionBody = LogHandler.buildLogsBytes(this.folderPath);
-                                Message msg = new Message(MessageTypes.REQUEST.getCode(), MessageTypes.ELECTION_PING.getCode(), electionBody);
+                                byteOut.write(electionBody);
+
+                                Message msg = new Message(MessageTypes.REQUEST.getCode(), MessageTypes.ELECTION_PING.getCode(), byteOut.toByteArray());
 
                                 Sender.sendMulticast(msg.toBytes(), this.multicastIPAddr, this.multicastPort);
 

@@ -67,6 +67,11 @@ public class LogHandler {
         return nodesMap;
     }
 
+    /**
+     * Builds a byte[] with the most recent 32 logs from the membershipLog
+     * @param folderPath
+     * @return byte array
+     */
     public static byte[] buildLogsBytes(String folderPath) {
         String logPath = folderPath + Constants.membershipLogFileName;
 

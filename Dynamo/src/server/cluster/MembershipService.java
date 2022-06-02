@@ -471,7 +471,7 @@ public class MembershipService implements ClusterMembership {
             // Verify if newNodeId received is this node (meaning this node was elected)
             if (newNodeId.equals(this.nodeId)) {
                  if (this.executorService != null) {
-                     this.electionPingThread = this.executorService.submit(new ElectionService(this.folderPath, this.multicastIpAddr, this.multicastIPPort));
+                     this.electionPingThread = this.executorService.submit(new ElectionService(this.nodeId, this.folderPath, this.multicastIpAddr, this.multicastIPPort));
                      isElected = true;
                      System.out.println("THIS NODE WAS ELECTED");
                  }
