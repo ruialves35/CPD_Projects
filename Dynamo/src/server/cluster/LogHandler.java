@@ -3,10 +3,7 @@ package server.cluster;
 import common.Utils;
 
 import java.io.*;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 public class LogHandler {
     /**
@@ -22,8 +19,8 @@ public class LogHandler {
 
         HashMap<String, Integer> currLogs = buildLogsMap(folderPath);
 
-        Set<String> logs = currLogs.keySet();
-        logs.addAll(newLogs.keySet());
+        Set<String> logs = new HashSet<>(currLogs.keySet());
+        logs.addAll(newLogs.keySet().stream().toList());
 
         for (final String currNodeId : logs) {
             int currCounter = -1;
@@ -40,9 +37,10 @@ public class LogHandler {
                 score -= 1;
         }
 
-        if (score == 0)
+        if (score == 0) {
             // Consider the node with lower id to be the most recent
             return newNodeId.compareTo(nodeId) < 0;
+        }
 
         return score > 0;
     }
@@ -59,10 +57,9 @@ public class LogHandler {
             while ((line = br.readLine()) != null) {
                 String[] lineData = line.split(" ");
                 nodesMap.put(lineData[0], Integer.parseInt(lineData[1]));
-
             }
         } catch (IOException e) {
-            return new HashMap<>();
+            return nodesMap;
         }
 
         return nodesMap;

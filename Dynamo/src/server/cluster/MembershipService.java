@@ -470,12 +470,12 @@ public class MembershipService implements ClusterMembership {
         InputStream is = new ByteArrayInputStream(message.getBody());
         BufferedReader br = new BufferedReader(new InputStreamReader(is));
 
-        String line, currNodeId;
+        String line, newNodeId;
         final HashMap<String, Integer> membershipLogs = new HashMap<>();
         try {
-            currNodeId = br.readLine();
-            // Verify if currNodeId received is this node (meaning this node was elected)
-            if (currNodeId.equals(this.nodeId)) {
+            newNodeId = br.readLine();
+            // Verify if newNodeId received is this node (meaning this node was elected)
+            if (newNodeId.equals(this.nodeId)) {
                 System.out.println("THIS NODE WAS ELECTED");
                 return;
             }
@@ -488,9 +488,12 @@ public class MembershipService implements ClusterMembership {
             throw new RuntimeException(e);
         }
 
-        if (LogHandler.isMoreRecent(membershipLogs, currNodeId, this.folderPath, this.nodeId)) {
+        if (LogHandler.isMoreRecent(membershipLogs, newNodeId, this.folderPath, this.nodeId)) {
             // Propagate the message to the next node?
             System.out.println("Log is more recent! propagate to next node");
+
+            // Send election request
+            ElectionService.propagateRequest(message, this.getNextNode(Utils.generateKey(this.nodeId)));
         }
     }
 }

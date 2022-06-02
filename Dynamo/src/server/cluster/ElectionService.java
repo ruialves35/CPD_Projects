@@ -16,7 +16,7 @@ public class ElectionService {
         public static void sendRequest(String nodeId, Node nextNode) {
                 if (nextNode == null) return;
 
-                System.out.println("Sending Election Request...");
+                System.out.printf("Sending Election Request to %s...\n", nextNode.getId());
                 Path path = Paths.get(Utils.generateFolderPath(nodeId) + Utils.membershipLogFileName);
 
                 try {
@@ -34,5 +34,15 @@ public class ElectionService {
                 }
         }
 
+        public static void propagateRequest(Message message, Node nextNode) {
+                if (nextNode == null) return;
+
+                System.out.printf("Propagating Election Request to %s...\n", nextNode.getId());
+                try {
+                        Sender.sendTCPMessage(message.toBytes(), nextNode.getId(), nextNode.getPort());
+                } catch (IOException e) {
+                        throw new RuntimeException(e);
+                }
+        }
 
 }
