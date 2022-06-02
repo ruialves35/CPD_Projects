@@ -13,6 +13,7 @@ import java.rmi.NotBoundException;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
+import java.util.Scanner;
 
 public class TestClient {
     public static void main(String[] args) {
@@ -108,8 +109,11 @@ public class TestClient {
     }
 
     private static void saveFile(byte[] value) throws IOException {
-        // TODO Where should we save the file?
-        try (FileOutputStream fos = new FileOutputStream("file")) {
+        Scanner scanner = new Scanner(System.in);
+        System.out.print("Insert the name of the file to be saved: ");
+        String fileName = scanner.nextLine();
+
+        try (FileOutputStream fos = new FileOutputStream(fileName)) {
             fos.write(value);
         }
     }
