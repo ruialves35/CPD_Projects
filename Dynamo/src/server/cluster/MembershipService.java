@@ -4,7 +4,7 @@ import common.Message;
 import common.Sender;
 import common.Utils;
 import server.Constants;
-
+import server.network.TCPListener;
 import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -12,6 +12,8 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.util.*;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Future;
 
 public class MembershipService implements ClusterMembership {
     private final TreeMap<String, Node> nodeMap;
@@ -26,8 +28,12 @@ public class MembershipService implements ClusterMembership {
     private final HashSet<String> membershipReplyNodes;
     private final HashSet<String> repliedNodes;
 
-    public MembershipService(String multicastIPAddr, int multicastIPPort, String nodeId, int tcpPort) {
-        nodeMap = new TreeMap<>();
+    private final ExecutorService executorService;
+    private boolean isElected = false;
+    Future<String> electionPingThread;
+
+    public MembershipService(String multicastIPAddr, int multicastIPPort, String nodeId, int tcpPort, ExecutorService executorService) {
+        this.nodeMap = new TreeMap<>();
         this.multicastIpAddr = multicastIPAddr;
         this.multicastIPPort = multicastIPPort;
         this.nodeId = nodeId;
@@ -35,6 +41,7 @@ public class MembershipService implements ClusterMembership {
         this.folderPath = Utils.generateFolderPath(nodeId);
         this.membershipReplyNodes = new HashSet<>();
         this.repliedNodes = new HashSet<>();
+        this.executorService = executorService;
         this.createNodeFolder();
     }
 
@@ -476,6 +483,13 @@ public class MembershipService implements ClusterMembership {
             newNodeId = br.readLine();
             // Verify if newNodeId received is this node (meaning this node was elected)
             if (newNodeId.equals(this.nodeId)) {
+                isElected = true;
+
+                 if (this.executorService != null) {
+                     this.electionPingThread = this.executorService.submit(new ElectionService());
+
+                 }
+
                 System.out.println("THIS NODE WAS ELECTED");
                 return;
             }

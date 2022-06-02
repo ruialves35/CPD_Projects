@@ -12,7 +12,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
-public class ElectionService {
+public class ElectionService implements Runnable{
         public static void sendRequest(String nodeId, Node nextNode) {
                 if (nextNode == null) return;
 
@@ -45,4 +45,8 @@ public class ElectionService {
                 }
         }
 
+        @Override
+        public void run() {
+
+        }
 }
