@@ -180,6 +180,7 @@ public class TransferService {
 
                 byte[] response = Sender.sendTCPMessage(msg.toBytes(), node.getId(), node.getPort());
                 Message responseMsg = new Message(response);
+                if (!responseMsg.getAction().equals("ok")) continue;
 
                 storageService.saveFile(fileName, responseMsg.getBody());
             } catch (IOException e) {
@@ -197,6 +198,8 @@ public class TransferService {
         try {
             Message message = new Message("REQ", "getFiles", null);
             Message reply = new Message(Sender.sendTCPMessage(message.toBytes(), node.getId(), node.getPort()));
+            if (!reply.getAction().equals("ok")) return new ArrayList<>();
+
             final BufferedReader reader = new BufferedReader(new InputStreamReader(new ByteArrayInputStream(reply.getBody())));
 
             ArrayList<String> fileNames = new ArrayList<>();
