@@ -76,7 +76,9 @@ public class ElectionService implements Runnable{
                                 Thread.sleep(Utils.electionPingTime);
                                 // TODO: Check if needs to detect any exception to stop
                         }
-                } catch (InterruptedException | IOException e) {
+                } catch (InterruptedException e) {
+                        System.out.println("Node stopped being a leader.");
+                } catch (IOException e) {
                         e.printStackTrace();
                 }
 

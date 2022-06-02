@@ -28,11 +28,10 @@ public class MembershipService implements ClusterMembership {
     private final HashSet<String> membershipReplyNodes;
     private final HashSet<String> repliedNodes;
 
-    private final ExecutorService executorService;
     private boolean isElected = false;
-    Future<?> electionPingThread;
+    Future<?> electionPingThread = null;
 
-    public MembershipService(String multicastIPAddr, int multicastIPPort, String nodeId, int tcpPort, ExecutorService executorService) {
+    public MembershipService(String multicastIPAddr, int multicastIPPort, String nodeId, int tcpPort) {
         this.nodeMap = new TreeMap<>();
         this.multicastIpAddr = multicastIPAddr;
         this.multicastIPPort = multicastIPPort;
@@ -41,7 +40,6 @@ public class MembershipService implements ClusterMembership {
         this.folderPath = Utils.generateFolderPath(nodeId);
         this.membershipReplyNodes = new HashSet<>();
         this.repliedNodes = new HashSet<>();
-        this.executorService = executorService;
         this.createNodeFolder();
     }
 
@@ -458,7 +456,7 @@ public class MembershipService implements ClusterMembership {
         return nextNode;
     }
 
-    public void handleElectionRequest(Message message) {
+    public void handleElectionRequest(Message message, ExecutorService executorService) {
         System.out.println("Received election request.");
 
         InputStream is = new ByteArrayInputStream(message.getBody());
@@ -469,10 +467,10 @@ public class MembershipService implements ClusterMembership {
         try {
             newNodeId = br.readLine();
             // Verify if newNodeId received is this node (meaning this node was elected)
-            if (newNodeId.equals(this.nodeId)) {
-                 if (this.executorService != null) {
-                     this.electionPingThread = this.executorService.submit(new ElectionService(this.nodeId, this.folderPath, this.multicastIpAddr, this.multicastIPPort));
-                     isElected = true;
+            if (newNodeId.equals(this.nodeId) && !this.isElected) {
+                 if (executorService != null) {
+                     this.electionPingThread = executorService.submit(new ElectionService(this.nodeId, this.folderPath, this.multicastIpAddr, this.multicastIPPort));
+                     this.isElected = true;
                      System.out.println("THIS NODE WAS ELECTED");
                  }
                 return;
@@ -489,6 +487,12 @@ public class MembershipService implements ClusterMembership {
         if (LogHandler.isMoreRecent(membershipLogs, newNodeId, this.folderPath, this.nodeId)) {
             // Propagate the message to the next node?
             System.out.println("Log is more recent! propagate to next node");
+
+            // Check if this node was the previous leader
+            if (this.isElected) {
+                this.isElected = false;
+                if (this.electionPingThread != null) this.electionPingThread.cancel(true);
+            }
 
             // Send election request
             ElectionService.propagateRequest(message, this.getNextNode(Utils.generateKey(this.nodeId)));

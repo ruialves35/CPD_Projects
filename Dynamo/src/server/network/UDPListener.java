@@ -72,7 +72,7 @@ public class UDPListener implements Runnable {
 
             switch (message.getAction()) {
                 case "electionPing" -> {
-                    System.out.println("Received election ping");
+                    System.out.println("Received election ping from " + nodeId);
                 }
                 case "join" -> {
                     this.handleJoinLeave(nodeId, br, true);

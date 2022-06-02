@@ -45,7 +45,7 @@ public class Store implements Server{
         this.nodeId = nodeId;
         this.storePort = storePort;
 
-        this.membershipService = new MembershipService(multicastIPAddr, multicastIPPort, nodeId, storePort, executorService);
+        this.membershipService = new MembershipService(multicastIPAddr, multicastIPPort, nodeId, storePort);
         this.storageService = new StorageService(membershipService.getNodeMap(), nodeId, executorService);
         this.transferService = new TransferService(storageService, new Node(nodeId, storePort));
 

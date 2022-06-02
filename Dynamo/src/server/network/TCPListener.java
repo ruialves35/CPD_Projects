@@ -82,7 +82,7 @@ public class TCPListener implements Runnable {
         Message reply;
         switch (message.getAction()) {
             case "electionRequest" -> {
-                this.membershipService.handleElectionRequest(message);
+                this.membershipService.handleElectionRequest(message, this.executorService);
                 reply = new Message(MessageTypes.REPLY.getCode(), MessageTypes.OK.getCode(), "".getBytes(StandardCharsets.UTF_8));
             }
             case "join" -> {
