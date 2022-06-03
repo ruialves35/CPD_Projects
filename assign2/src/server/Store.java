@@ -115,6 +115,8 @@ public class Store implements Server{
                 this.membershipService.join();
                 if (!this.hasCrashed)
                     this.transferService.join();
+                else
+                    this.transferService.recoverFromCrash();
 
                 try {
                     multicastSocket = new MulticastSocket(multicastIPPort);
@@ -176,8 +178,6 @@ public class Store implements Server{
             this.membershipService.leave();
             this.join();
 
-            // recover backup files
-            this.transferService.recoverFromCrash();
             this.hasCrashed = false;
         }
     }
