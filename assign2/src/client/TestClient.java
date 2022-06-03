@@ -113,6 +113,7 @@ public class TestClient {
 
     private static void membershipOperation(String nodeIp, String remoteObjName, String operation) {
         try {
+            System.out.println("Sending " + operation + " operation to " + nodeIp + ":" + remoteObjName);
             Registry registry = LocateRegistry.getRegistry(nodeIp);
             Server serverStub = (Server) registry.lookup(remoteObjName);
 

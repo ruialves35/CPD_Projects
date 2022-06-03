@@ -119,22 +119,41 @@ public class TransferService {
      * @return if everything went well Message with saveFile action,
      *         otherwise Message with error action
      */
-    private Message createMsgFromFile(String filePath) {
+    private Message createMsgFromFile(String fileName) {
+        final String filePath = storageService.getDbFolder() + fileName;
+        final ByteArrayOutputStream out = new ByteArrayOutputStream();
+        final DataOutputStream dos = new DataOutputStream(out);
+        byte[] fileBytes;
+
         synchronized (filePath.intern()) {
             File file = new File(filePath);
             try (FileInputStream fis = new FileInputStream(file.getPath())) {
-
-                final ByteArrayOutputStream out = new ByteArrayOutputStream();
-                out.write(file.getName().getBytes(StandardCharsets.UTF_8));
-                out.write("\r\n".getBytes(StandardCharsets.UTF_8));
-                out.write(fis.readAllBytes());
-
-                return new Message("REQ", "saveFile", out.toByteArray());
+                dos.write(file.getName().getBytes(StandardCharsets.UTF_8));
+                dos.write("\r\n".getBytes(StandardCharsets.UTF_8));
+                fileBytes = fis.readAllBytes();
             } catch (IOException e) {
-                System.out.println("Error opening file in get operation: " + file.getPath());
+                System.out.println("Error opening file in createMsgFromFile: " + file.getPath());
                 throw new RuntimeException(e);
             }
         }
+
+        final String tombstonePath = storageService.getTombstoneFolder() + fileName;
+        final File tombstone = new File(tombstonePath);
+        if (tombstone.exists()) {
+            try {
+                long timestamp = TombstoneManager.getTimestamp(tombstonePath);
+                dos.writeLong(timestamp);
+            } catch (IOException e) {
+                System.out.println("Error opening tombstone in createMsgFromFile: " + tombstone.getPath());
+            }
+        }
+
+        try {
+            dos.write(fileBytes);
+        } catch (IOException e) {
+            System.out.println("Error writing file bytes in createMsgFromFile: " + filePath);
+        }
+        return new Message("REQ", "saveFile", out.toByteArray());
     }
 
     /**
@@ -145,7 +164,7 @@ public class TransferService {
     private void sendNodeFiles(ArrayList<String> fileNames, Node node) {
         for (String fileName : fileNames) {
             try {
-                Message msg = createMsgFromFile(storageService.getDbFolder() + fileName);
+                Message msg = createMsgFromFile(fileName);
                 Sender.sendTCPMessage(msg.toBytes(), node.getId(), node.getPort());
             } catch (IOException e) {
                 System.out.println("Could not send file to node: " + node.getId());
@@ -163,14 +182,7 @@ public class TransferService {
                 byte[] response = Sender.sendTCPMessage(msg.toBytes(), node.getId(), node.getPort());
                 Message responseMsg = new Message(response);
 
-                DataInputStream dis = new DataInputStream(new ByteArrayInputStream(responseMsg.getBody()));
-                long tombTimestamp = dis.readLong();
-
-                byte[] file = dis.readAllBytes();
-
-                storageService.saveFile(fileName, file);
-                if (tombTimestamp != 0)
-                    storageService.saveTombstone(fileName, tombTimestamp);
+                storageService.saveFile(fileName, responseMsg.getBody());
             } catch (IOException e) {
                 System.out.println("Could not get the files from the next node on Join.");
                 throw new RuntimeException(e);
@@ -205,8 +217,10 @@ public class TransferService {
     private ArrayList<String> filterResponsibleFiles(ArrayList<String> fileNames, Node node) {
         final ArrayList<String> filteredFileNames = new ArrayList<>();
         for (String fileName : fileNames) {
-            if (storageService.getResponsibleNode(fileName).getId().equals(node.getId())) {
-                filteredFileNames.add(fileName);
+            if (storageService.getResponsibleNode(fileName).getId().equals(node.getId())
+                && !fileName.equals("tombstones") && !fileName.equals("membership.log")
+                && !fileName.equals("membershipCounter.txt")) {
+                    filteredFileNames.add(fileName);
             }
         }
 

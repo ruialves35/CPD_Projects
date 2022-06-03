@@ -54,10 +54,12 @@ public class StorageService implements KeyValue {
             if (nextNode.getId().equals(ownID)) break; // Not enough nodes available
 
             final ByteArrayOutputStream out = new ByteArrayOutputStream();
+            final DataOutputStream dos = new DataOutputStream(out);
             try {
-                out.write(key.getBytes(StandardCharsets.UTF_8));
-                out.write(Utils.newLine.getBytes(StandardCharsets.UTF_8));
-                out.write(value);
+                dos.write(key.getBytes(StandardCharsets.UTF_8));
+                dos.write(Utils.newLine.getBytes(StandardCharsets.UTF_8));
+                dos.writeLong(0);
+                dos.write(value);
 
                 Message msg = new Message("REQ", "saveFile", out.toByteArray());
 
@@ -142,26 +144,29 @@ public class StorageService implements KeyValue {
         return reply;
     }
 
-    public Message saveFile(String key, byte[] file) {
-        System.out.println("Saving file " + key);
-
+    public Message saveFile(String key, byte[] data) {
         String filePath = dbFolder + key;
         if (hasFile(key)) return new Message("REP", "ok", null);
 
-        Message reply;
+        DataInputStream dis = new DataInputStream(new ByteArrayInputStream(data));
+        try {
+            long tombTimestamp = dis.readLong();
+            byte[] file = dis.readAllBytes();
 
-        synchronized (filePath.intern()) {
-            try (FileOutputStream fos = new FileOutputStream(filePath)) {
-                fos.write(file);
-                reply = new Message("REP", "ok", null);
-
-            } catch (IOException e) {
-                System.out.println("Error opening file in put operation: " + filePath);
-                reply = new Message("REP", "error", null);
+            synchronized (filePath.intern()) {
+                try (FileOutputStream fos = new FileOutputStream(filePath)) {
+                    fos.write(file);
+                }
             }
-        }
 
-        return reply;
+            if (tombTimestamp != 0)
+                this.saveTombstone(key, tombTimestamp);
+
+            return new Message("REP", "ok", null);
+        } catch (IOException e) {
+            System.out.println("Error in saveFile operation: " + key);
+            return new Message("REP", "error", null);
+        }
     }
 
     public Message safeDelete(String key) {
@@ -202,6 +207,10 @@ public class StorageService implements KeyValue {
 
     public String getDbFolder() {
         return dbFolder;
+    }
+
+    public String getTombstoneFolder() {
+        return tombstoneFolder;
     }
 
     public int getNumberOfNodes() {
