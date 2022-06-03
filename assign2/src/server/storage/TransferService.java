@@ -165,8 +165,7 @@ public class TransferService {
 
                 DataInputStream dis = new DataInputStream(new ByteArrayInputStream(responseMsg.getBody()));
                 long tombTimestamp = dis.readLong();
-                //noinspection ResultOfMethodCallIgnored
-                dis.skip(8);
+
                 byte[] file = dis.readAllBytes();
 
                 storageService.saveFile(fileName, file);

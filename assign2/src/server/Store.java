@@ -38,6 +38,7 @@ public class Store implements Server{
 
     private ServerSocket serverSocket = null;
     private MulticastSocket multicastSocket = null;
+    private boolean hasCrashed = false;
 
     public Store(String multicastIPAddr, int multicastIPPort, String nodeId, int storePort) throws RemoteException {
         this.multicastIPAddr = multicastIPAddr;
@@ -108,7 +109,8 @@ public class Store implements Server{
 
 
             this.membershipService.join();
-            this.transferService.join();
+            if (!this.hasCrashed)
+                this.transferService.join();
 
             try {
                 multicastSocket = new MulticastSocket(multicastIPPort);
@@ -166,6 +168,7 @@ public class Store implements Server{
 
     private void checkNodeCrash() throws RemoteException {
         if (this.membershipService.hasCrashed()) {
+            this.hasCrashed = true;
             System.out.println("Restoring the Store state after crash...");
             // This means the node crashed while being a part
             this.membershipService.leave();
@@ -173,6 +176,7 @@ public class Store implements Server{
 
             // recover backup files
             this.transferService.recoverFromCrash();
+            this.hasCrashed = false;
         }
     }
 }
