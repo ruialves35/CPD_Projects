@@ -63,6 +63,24 @@ public class ElectionService implements Runnable{
                 }
         }
 
+        /**
+         * If the leader leaves the cluster, it will send a leave request to the next Node so that it starts an election process.
+         * @param nodeId
+         * @param nextNode
+         */
+        public static void sendLeave(String nodeId, Node nextNode, byte[] leaveBody) {
+                if (nextNode == null) return;
+
+                System.out.printf("Sending Election Leave Request to %s:%d...\n", nextNode.getId(), nextNode.getPort());
+
+                try {
+                        Message electionMessage = new Message(MessageTypes.REQUEST.getCode(), MessageTypes.ELECTION_LEAVE.getCode(),leaveBody);
+                        Sender.sendTCPMessage(electionMessage.toBytes(), nextNode.getId(), nextNode.getPort());
+                } catch (IOException e) {
+                        throw new RuntimeException(e);
+                }
+        }
+
         @Override
         public void run() {
                 try {

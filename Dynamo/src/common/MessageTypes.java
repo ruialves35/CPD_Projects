@@ -14,7 +14,9 @@ public enum MessageTypes {
     ERROR("error"),
     OK("ok"),
     ELECTION_REQUEST("electionRequest"),
-    ELECTION_PING("electionPing");
+    ELECTION_PING("electionPing"),
+
+    ELECTION_LEAVE("electionLeave");
 
     private String code;
 

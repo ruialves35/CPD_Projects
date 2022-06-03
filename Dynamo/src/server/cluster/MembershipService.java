@@ -71,6 +71,10 @@ public class MembershipService implements ClusterMembership {
             this.updateMembershipCounter(this.membershipCounter + 1);
             this.addLog(this.nodeId, this.membershipCounter, this.tcpPort);
             this.multicastLeave();
+
+            if (this.isElected) {
+                ElectionService.sendLeave(this.nodeId, this.getNextNode(Utils.generateKey(this.nodeId)), this.buildMembershipMsgBody());
+            }
         }
     }
 

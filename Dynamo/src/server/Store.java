@@ -169,6 +169,8 @@ public class Store implements Server{
             // This means the node crashed while being a part
             this.membershipService.leave();
             this.join();
+
+            // TODO: Call method to recover backup files
         }
     }
 }
