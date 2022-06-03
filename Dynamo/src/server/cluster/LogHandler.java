@@ -40,8 +40,8 @@ public class LogHandler {
         }
 
         if (score == 0) {
-            // Consider the node with lower id to be the most recent
-            return (!isPing) && newNodeId.compareTo(nodeId) < 0;
+            // If it is an election ping, do not change leader on tie. Otherwise, update the leader.
+            return !isPing; // (!isPing) && newNodeId.compareTo(nodeId) < 0;
         }
 
         return score > 0;

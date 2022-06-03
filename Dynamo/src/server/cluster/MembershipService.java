@@ -74,6 +74,8 @@ public class MembershipService implements ClusterMembership {
 
             if (this.isElected) {
                 ElectionService.sendLeave(this.nodeId, this.getNextNode(Utils.generateKey(this.nodeId)), this.buildMembershipMsgBody());
+                this.isElected = false;
+                if (this.electionPingThread != null) this.electionPingThread.cancel(true);
             }
         }
     }
