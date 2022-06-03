@@ -5,25 +5,30 @@ import common.MessageTypes;
 import common.Sender;
 import common.Utils;
 
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
+import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.TreeMap;
 
 public class ElectionService implements Runnable{
-        final String folderPath;
-        final String multicastIPAddr;
-        final int multicastPort;
+        private final String folderPath;
+        private final String multicastIPAddr;
+        private final int multicastPort;
 
-        final String nodeId;
+        private final String nodeId;
 
-        public ElectionService(String nodeId, String folderPath, String multicastIPAddr, int multicastPort) {
+        private final TreeMap<String, Node> nodeMap;
+
+        public ElectionService(String nodeId, String folderPath, String multicastIPAddr, int multicastPort, TreeMap<String, Node> nodeMap) {
                 this.folderPath = folderPath;
                 this.multicastIPAddr = multicastIPAddr;
                 this.multicastPort = multicastPort;
                 this.nodeId = nodeId;
+                this.nodeMap = nodeMap;
         }
 
         public static void sendRequest(String nodeId, Node nextNode) {
@@ -66,11 +71,12 @@ public class ElectionService implements Runnable{
                                 String nodeIdLine = nodeId + Utils.newLine;
                                 byteOut.write(nodeIdLine.getBytes(StandardCharsets.UTF_8));
 
-                                byte[] electionBody = LogHandler.buildLogsBytes(this.folderPath);
+                                byte[] electionBody = LogHandler.buildLogsBytes(this.folderPath, this.nodeMap);
                                 byteOut.write(electionBody);
 
                                 Message msg = new Message(MessageTypes.REQUEST.getCode(), MessageTypes.ELECTION_PING.getCode(), byteOut.toByteArray());
 
+                                System.out.println("Sending msg with size: " + msg.toBytes().length);
                                 Sender.sendMulticast(msg.toBytes(), this.multicastIPAddr, this.multicastPort);
 
                                 Thread.sleep(Utils.electionPingTime);
@@ -81,6 +87,5 @@ public class ElectionService implements Runnable{
                 } catch (IOException e) {
                         e.printStackTrace();
                 }
-
         }
 }

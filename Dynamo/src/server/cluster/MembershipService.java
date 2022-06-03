@@ -298,7 +298,7 @@ public class MembershipService implements ClusterMembership {
 
             if (isClusterMember(newMemberCounter)) {
                 // if the nodeMap does not contain this node
-                if ((newNodePort != Constants.invalidPort) && !this.nodeMap.containsKey(newNodeId))
+                if ((newNodePort != Constants.invalidPort) && !this.nodeMap.containsKey(Utils.generateKey(newNodeId)))
                     this.nodeMap.put(Utils.generateKey(newNodeId), new Node(newNodeId, newNodePort));
             } else {
                 // Remove the node from the nodeMap
@@ -320,12 +320,12 @@ public class MembershipService implements ClusterMembership {
             byteOut.write(this.nodeId.getBytes(StandardCharsets.UTF_8));
             byteOut.write(Utils.newLine.getBytes(StandardCharsets.UTF_8));
 
-            byteOut.write(LogHandler.buildLogsBytes(this.folderPath));
+            byteOut.write(LogHandler.buildLogsBytes(this.folderPath, null));
 
             byteOut.write(Utils.newLine.getBytes(StandardCharsets.UTF_8));
 
             for (Node node : this.getNodeMap().values()) {
-                String entryLine = node.getId() + " " + node.getPort() + "\n";
+                String entryLine = node.getId() + " " + node.getPort() + Utils.newLine;
                 byteOut.write(entryLine.getBytes(StandardCharsets.UTF_8));
             }
         } catch (IOException e) {
@@ -472,7 +472,7 @@ public class MembershipService implements ClusterMembership {
             // Verify if newNodeId received is this node (meaning this node was elected)
             if (newNodeId.equals(this.nodeId) && !this.isElected) {
                  if (executorService != null) {
-                     this.electionPingThread = executorService.submit(new ElectionService(this.nodeId, this.folderPath, this.multicastIpAddr, this.multicastIPPort));
+                     this.electionPingThread = executorService.submit(new ElectionService(this.nodeId, this.folderPath, this.multicastIpAddr, this.multicastIPPort, this.nodeMap));
                      this.isElected = true;
                      System.out.println("THIS NODE WAS ELECTED");
                  }
@@ -487,7 +487,7 @@ public class MembershipService implements ClusterMembership {
             throw new RuntimeException(e);
         }
 
-        if (LogHandler.isMoreRecent(membershipLogs, newNodeId, this.folderPath, this.nodeId)) {
+        if (LogHandler.isMoreRecent(membershipLogs, newNodeId, this.folderPath, this.nodeId, false)) {
             // Propagate the message to the next node?
             System.out.println("Log is more recent! propagate to next node");
 
@@ -505,34 +505,48 @@ public class MembershipService implements ClusterMembership {
     public void handleElectionPing(Message message) {
         System.out.println("Received election ping.");
 
-        InputStream is = new ByteArrayInputStream(message.getBody());
+        ByteArrayInputStream is = new ByteArrayInputStream(message.getBody());
         BufferedReader br = new BufferedReader(new InputStreamReader(is));
 
         String line, newNodeId;
-        final HashMap<String, Integer> membershipLogs = new HashMap<>();
+        final HashMap<String, ArrayList<Integer>> newMembershipLogs = new HashMap<>();
+        final HashMap<String, Integer> newParsedLogs = new HashMap<>();
+        System.out.println("Received body with size: " + message.getBody().length); // TODO: CHECK WHY BYTE ARRAY BODY IS 9979
         try {
             newNodeId = br.readLine();
 
             while ((line = br.readLine()) != null) {
+                if (line.isEmpty())
+                    break;
+                System.out.println("line: " + line);
                 String[] logData = line.split(" ");
-                membershipLogs.put(logData[0], Integer.parseInt(logData[1]));
+                newMembershipLogs.put(logData[0], new ArrayList<>(List.of( Integer.parseInt(logData[1]), Integer.parseInt(logData[2]) )));
+                newParsedLogs.put(logData[0], Integer.parseInt(logData[1]));
             }
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
 
-        if (LogHandler.isMoreRecent(membershipLogs, newNodeId, this.folderPath, this.nodeId)) {
-            // Propagate the message to the next node?
-            System.out.println("Log is more recent! propagate to next node");
 
-            // Check if this node was the previous leader
-            if (this.isElected) {
-                this.isElected = false;
-                if (this.electionPingThread != null) this.electionPingThread.cancel(true);
+        // Update current node logs
+        final HashMap<String, Integer> currMembershipLogs = LogHandler.buildLogsMap(this.folderPath);
+        for (String iterNodeId : newMembershipLogs.keySet()) {
+            int currCounter = -1;
+            if (currMembershipLogs.containsKey(iterNodeId))
+                currCounter = currMembershipLogs.get(iterNodeId);
+
+            Integer newCounter = newParsedLogs.get(iterNodeId);
+            if (newCounter > currCounter) {
+                this.addLog(iterNodeId, newCounter, newMembershipLogs.get(iterNodeId).get(1));
             }
+        }
+
+        if (LogHandler.isMoreRecent(newParsedLogs, newNodeId, this.folderPath, this.nodeId, true)) {
+            // Propagate the message to the next node?
+            System.out.println("Node is more recent than the current leader. Starting an election request...");
 
             // Send election request
-            ElectionService.propagateRequest(message, this.getNextNode(Utils.generateKey(this.nodeId)));
+            ElectionService.sendRequest(this.nodeId, this.getNextNode(Utils.generateKey(this.nodeId)));
         }
     }
 }
