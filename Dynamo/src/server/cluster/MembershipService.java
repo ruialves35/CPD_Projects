@@ -511,14 +511,12 @@ public class MembershipService implements ClusterMembership {
         String line, newNodeId;
         final HashMap<String, ArrayList<Integer>> newMembershipLogs = new HashMap<>();
         final HashMap<String, Integer> newParsedLogs = new HashMap<>();
-        System.out.println("Received body with size: " + message.getBody().length); // TODO: CHECK WHY BYTE ARRAY BODY IS 9979
         try {
             newNodeId = br.readLine();
 
             while ((line = br.readLine()) != null) {
                 if (line.isEmpty())
                     break;
-                System.out.println("line: " + line);
                 String[] logData = line.split(" ");
                 newMembershipLogs.put(logData[0], new ArrayList<>(List.of( Integer.parseInt(logData[1]), Integer.parseInt(logData[2]) )));
                 newParsedLogs.put(logData[0], Integer.parseInt(logData[1]));

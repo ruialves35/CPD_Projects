@@ -17,7 +17,6 @@ public class LogHandler {
      * @return
      */
     public static boolean isMoreRecent(HashMap<String, Integer> newLogs, String newNodeId, String folderPath, String nodeId, boolean isPing) {
-        System.out.println("isMoreRecent Start");
         int score = 0;
 
         HashMap<String, Integer> currLogs = buildLogsMap(folderPath);
@@ -40,9 +39,7 @@ public class LogHandler {
                 score -= 1;
         }
 
-        System.out.println("Score: " + score);
         if (score == 0) {
-            System.out.println("isMoreRecent comparison ended in a draw.");
             // Consider the node with lower id to be the most recent
             return (!isPing) && newNodeId.compareTo(nodeId) < 0;
         }
@@ -96,15 +93,13 @@ public class LogHandler {
                         sb.append(" ");
                         // if nodeMap does not find the port, send the invalid port number (-1)
                         String nodeId = line.split(" ")[0];
-                        System.out.println("buildLogsBytes nodeId: " + nodeId);
-                        System.out.println("buildsLogsBytes nodeMap: " + nodeMap);
-
                         String nodeKey = Utils.generateKey(nodeId);
+
                         if (nodeMap.containsKey(nodeKey)) sb.append(nodeMap.get(nodeKey).getPort());
                         else sb.append(Constants.invalidPort);
                     }
 
-                    sb.append(Utils.newLine).append(Utils.newLine);
+                    sb.append(Utils.newLine);
                     byteOut.write(sb.toString().getBytes(StandardCharsets.UTF_8));
                 }
                 myReader.close();

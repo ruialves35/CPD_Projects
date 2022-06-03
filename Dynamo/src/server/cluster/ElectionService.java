@@ -34,7 +34,7 @@ public class ElectionService implements Runnable{
         public static void sendRequest(String nodeId, Node nextNode) {
                 if (nextNode == null) return;
 
-                System.out.printf("Sending Election Request to %s...\n", nextNode.getId());
+                System.out.printf("Sending Election Request to %s:%d...\n", nextNode.getId(), nextNode.getPort());
                 Path path = Paths.get(Utils.generateFolderPath(nodeId) + Utils.membershipLogFileName);
 
                 try {
@@ -76,7 +76,6 @@ public class ElectionService implements Runnable{
 
                                 Message msg = new Message(MessageTypes.REQUEST.getCode(), MessageTypes.ELECTION_PING.getCode(), byteOut.toByteArray());
 
-                                System.out.println("Sending msg with size: " + msg.toBytes().length);
                                 Sender.sendMulticast(msg.toBytes(), this.multicastIPAddr, this.multicastPort);
 
                                 Thread.sleep(Utils.electionPingTime);

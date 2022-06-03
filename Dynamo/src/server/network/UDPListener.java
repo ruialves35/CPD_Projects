@@ -39,9 +39,15 @@ public class UDPListener implements Runnable {
                 DatagramPacket packet = new DatagramPacket(msg, msg.length);
 
                 this.multicastSocket.receive(packet);
+
+                // UDP packet always has the MAX_MSG_SIZE length so we need to prune it.
+                byte[] prunedData = new byte[packet.getLength()];
+                System.arraycopy(packet.getData(), packet.getOffset(), prunedData, 0, packet.getLength());
                 try {
-                    final Message message = new Message(packet.getData());
-                    executorService.submit(() -> processEvent(message));
+                    final Message message = new Message(prunedData);
+                    executorService.submit(() -> {
+                        processEvent(message);
+                    });
 
                     if (message.getAction().equals("exit"))
                         break;
