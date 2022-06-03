@@ -55,7 +55,7 @@ public class MembershipService implements ClusterMembership {
             this.multicastJoin();
 
             // Send election request
-            ElectionService.sendRequest(this.nodeId, this.getNextNode(Utils.generateKey(this.nodeId)));
+            ElectionService.sendRequest(this.nodeId, this.nodeMap);
         } else {
             throw new RuntimeException("Attempting to join the cluster while being already a member.");
         }
@@ -73,10 +73,8 @@ public class MembershipService implements ClusterMembership {
             this.multicastLeave();
 
             if (this.isElected) {
-                if (this.nodeMap.size() > 0) {
-                    Node leaderHeir = this.nodeMap.firstEntry().getValue();
-                    ElectionService.sendLeave(this.nodeId, leaderHeir, this.buildMembershipMsgBody());
-                }
+                ElectionService.sendLeave(this.nodeMap, this.buildMembershipMsgBody());
+
                 this.isElected = false;
                 if (this.electionPingThread != null) this.electionPingThread.cancel(true);
             }
@@ -446,22 +444,6 @@ public class MembershipService implements ClusterMembership {
         return nodeId;
     }
 
-    /**
-     *  Gets next node to node with key. If there is no node with higher key value,
-     *  then gets the first node, so it behaves like a circular map
-     * @param key key of the node that we want to get the next node
-     * @return Next Node
-     */
-    public Node getNextNode(String key) {
-        if (nodeMap.size() == 0) return null;
-
-        // Get the next node to store the files
-        Map.Entry<String, Node> nextEntry = nodeMap.higherEntry(key);
-        if (nextEntry == null) nextEntry = nodeMap.firstEntry();
-        Node nextNode = nextEntry.getValue();
-        return nextNode;
-    }
-
     public void handleElectionRequest(Message message, ExecutorService executorService) {
 
         InputStream is = new ByteArrayInputStream(message.getBody());
@@ -501,7 +483,7 @@ public class MembershipService implements ClusterMembership {
             }
 
             // Send election request
-            ElectionService.propagateRequest(message, this.getNextNode(Utils.generateKey(this.nodeId)));
+            ElectionService.propagateRequest(this.nodeId, this.nodeMap, message);
         }
     }
 
@@ -546,7 +528,7 @@ public class MembershipService implements ClusterMembership {
             System.out.println("Node is more recent than the current leader. Starting an election request...");
 
             // Send election request
-            ElectionService.sendRequest(this.nodeId, this.getNextNode(Utils.generateKey(this.nodeId)));
+            ElectionService.sendRequest(this.nodeId, this.nodeMap);
         }
     }
     public void handleElectionLeave(Message message) {
@@ -579,12 +561,12 @@ public class MembershipService implements ClusterMembership {
         updateMembershipInfo(newMembershipLogs);
 
         // Send election request to become the new leader
-        ElectionService.sendRequest(this.nodeId, this.getNextNode(Utils.generateKey(this.nodeId)));
+        ElectionService.sendRequest(this.nodeId, this.nodeMap);
     }
 
     public void handleElectionTimeout() {
         System.out.println("Election Ping timeout detected! Sending an election request...");
-        ElectionService.sendRequest(this.nodeId, this.getNextNode(Utils.generateKey(this.nodeId)));
+        ElectionService.sendRequest(this.nodeId, this.nodeMap);
     }
 
     /**

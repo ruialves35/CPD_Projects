@@ -13,6 +13,7 @@ public enum MessageTypes {
     GET_FILES("getFiles"),
     ERROR("error"),
     OK("ok"),
+    TIMEOUT("timeout"),
     ELECTION_REQUEST("electionRequest"),
     ELECTION_PING("electionPing"),
 

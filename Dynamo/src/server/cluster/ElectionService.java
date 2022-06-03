@@ -13,6 +13,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.TreeMap;
 
 public class ElectionService implements Runnable{
@@ -32,12 +33,8 @@ public class ElectionService implements Runnable{
                 this.nodeMap = nodeMap;
         }
 
-        public static void sendRequest(String nodeId, Node nextNode) {
-                if (nextNode == null) return;
-
-                System.out.printf("Sending Election Request to %s...\n", nextNode.getId());
+        public static void sendRequest(String nodeId, TreeMap<String, Node> nodeMap) {
                 Path path = Paths.get(Utils.generateFolderPath(nodeId) + Constants.membershipLogFileName);
-
                 try {
                         byte[] fileData = Files.readAllBytes(path);
                         String nodeIdLine = nodeId + Utils.newLine;
@@ -47,21 +44,16 @@ public class ElectionService implements Runnable{
                         out.write(fileData);
 
                         Message electionMessage = new Message(MessageTypes.REQUEST.getCode(), MessageTypes.ELECTION_REQUEST.getCode(), out.toByteArray());
-                        byte[] electionRes = Sender.sendTCPMessage(electionMessage.toBytes(), nextNode.getId(), nextNode.getPort());
 
-                        Message resMessage = new Message(electionRes);
-                        System.out.println("resMessage Action: " + resMessage.getAction());
+                        sendSafeMessage(nodeId, nodeMap, electionMessage, "Request");
                 } catch (IOException e) {
                         throw new RuntimeException(e);
                 }
         }
 
-        public static void propagateRequest(Message message, Node nextNode) {
-                if (nextNode == null) return;
-
-                System.out.printf("Propagating Election Request to %s...\n", nextNode.getId());
+        public static void propagateRequest(String nodeId, TreeMap<String, Node> nodeMap, Message message) {
                 try {
-                        Sender.sendTCPMessage(message.toBytes(), nextNode.getId(), nextNode.getPort());
+                        sendSafeMessage(nodeId, nodeMap, message, "Propagate");
                 } catch (IOException e) {
                         throw new RuntimeException(e);
                 }
@@ -69,20 +61,61 @@ public class ElectionService implements Runnable{
 
         /**
          * If the leader leaves the cluster, it will send a leave request to the next Node so that it starts an election process.
-         * @param nodeId
-         * @param nextNode
          */
-        public static void sendLeave(String nodeId, Node nextNode, byte[] leaveBody) {
-                if (nextNode == null) return;
-
-                System.out.printf("Sending Election Leave Request to %s:%d...\n", nextNode.getId(), nextNode.getPort());
-
+        public static void sendLeave(TreeMap<String, Node> nodeMap, byte[] leaveBody) {
                 try {
-                        Message electionMessage = new Message(MessageTypes.REQUEST.getCode(), MessageTypes.ELECTION_LEAVE.getCode(),leaveBody);
-                        Sender.sendTCPMessage(electionMessage.toBytes(), nextNode.getId(), nextNode.getPort());
+                        Message electionMessage = new Message(MessageTypes.REQUEST.getCode(), MessageTypes.ELECTION_LEAVE.getCode(), leaveBody);
+                        sendSafeByFirst(nodeMap, electionMessage, "Leave");
                 } catch (IOException e) {
                         throw new RuntimeException(e);
                 }
+        }
+
+        /**
+         *  Gets next node to node with key. If there is no node with higher key value,
+         *  then gets the first node, so it behaves like a circular map
+         * @return Next Node
+         */
+        public static Node getNextNode(String nodeId, TreeMap<String, Node> nodeMap) {
+                if (nodeMap.size() == 0) return null;
+                String key = Utils.generateKey(nodeId);
+
+                // Get the next node to store the files
+                Map.Entry<String, Node> nextEntry = nodeMap.higherEntry(key);
+                if (nextEntry == null) nextEntry = nodeMap.firstEntry();
+                Node nextNode = nextEntry.getValue();
+                return nextNode;
+        }
+
+        private static void sendSafeMessage(String sourceNodeId, TreeMap<String, Node> nodeMap, Message electionMessage, String label) throws IOException {
+                String currNodeId = sourceNodeId;
+                while (true) {
+                        Node nextNode = getNextNode(currNodeId, nodeMap);
+                        if (nextNode == null) return;
+                        currNodeId = nextNode.getId();
+
+                        System.out.printf("Sending %s Election message to %s...\n", label, nextNode.getId());
+
+                        byte[] electionRes = Sender.sendTCPMessage(electionMessage.toBytes(), nextNode.getId(), nextNode.getPort());
+
+                        Message resMessage = new Message(electionRes);
+                        if (resMessage.getAction().equals(MessageTypes.OK.getCode()))
+                                return;
+                }
+        }
+
+        private static void sendSafeByFirst(TreeMap<String, Node> nodeMap, Message electionMessage, String label) throws IOException {
+                if (nodeMap.size() == 0) return;
+                Node firstNode = nodeMap.firstEntry().getValue();
+
+                System.out.printf("Sending %s Election message to %s...\n", label, firstNode.getId());
+
+                byte[] electionRes = Sender.sendTCPMessage(electionMessage.toBytes(), firstNode.getId(), firstNode.getPort());
+                Message resMessage = new Message(electionRes);
+                if (resMessage.getAction().equals(MessageTypes.OK.getCode()))
+                        return;
+
+                sendSafeMessage(firstNode.getId(), nodeMap, electionMessage, label);
         }
 
         @Override
