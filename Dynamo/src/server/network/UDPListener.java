@@ -1,6 +1,7 @@
 package server.network;
 
 import common.Message;
+import server.Constants;
 import server.cluster.MembershipService;
 import server.storage.StorageService;
 import server.storage.TransferService;
@@ -16,6 +17,8 @@ public class UDPListener implements Runnable {
     private final ExecutorService executorService;
     private final MulticastSocket multicastSocket;
 
+    private long lastElectionPing;
+
     public UDPListener(StorageService storageService, MembershipService membershipService, TransferService transferService,
                        ExecutorService executorService, MulticastSocket multicastSocket) {
         this.storageService = storageService;
@@ -23,6 +26,7 @@ public class UDPListener implements Runnable {
         this.transferService = transferService;
         this.executorService = executorService;
         this.multicastSocket = multicastSocket;
+        lastElectionPing = System.currentTimeMillis();
     }
 
     public void run() {
@@ -34,6 +38,9 @@ public class UDPListener implements Runnable {
             this.multicastSocket.joinGroup(group, netInf);
 
             System.out.println("Listening UDP messages");
+
+            executorService.submit(this::handleElectionTimeout);
+
             while (true) {
                 byte[] msg = new byte[Message.MAX_MSG_SIZE];
                 DatagramPacket packet = new DatagramPacket(msg, msg.length);
@@ -78,6 +85,7 @@ public class UDPListener implements Runnable {
 
             switch (message.getAction()) {
                 case "electionPing" -> {
+                    this.lastElectionPing = System.currentTimeMillis();
                     this.membershipService.handleElectionPing(message);
                 }
                 case "join" -> {
@@ -101,5 +109,23 @@ public class UDPListener implements Runnable {
 
         if (isJoin) this.membershipService.handleJoinRequest(nodeId, tcpPort, membershipCounter);
         else this.membershipService.handleLeaveRequest(nodeId, membershipCounter, tcpPort);
+    }
+
+    private void handleElectionTimeout() {
+        try {
+            while (true) {
+                if (!this.membershipService.getIsElected()) {
+                    long delta = (System.currentTimeMillis() - this.lastElectionPing);
+                    if (delta > Constants.electionPingTimeout) {
+                        this.lastElectionPing = System.currentTimeMillis();
+                        this.membershipService.handleElectionTimeout();
+                    }
+                }
+
+                Thread.sleep(Constants.electionPingTime * 2);
+            }
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        }
     }
 }

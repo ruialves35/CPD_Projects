@@ -582,6 +582,11 @@ public class MembershipService implements ClusterMembership {
         ElectionService.sendRequest(this.nodeId, this.getNextNode(Utils.generateKey(this.nodeId)));
     }
 
+    public void handleElectionTimeout() {
+        System.out.println("Election Ping timeout detected! Sending an election request...");
+        ElectionService.sendRequest(this.nodeId, this.getNextNode(Utils.generateKey(this.nodeId)));
+    }
+
     /**
      * This method updates this node membershipInfo efficiently, according to the new received logs
      * @param newMembershipLogs
@@ -603,4 +608,7 @@ public class MembershipService implements ClusterMembership {
         }
     }
 
+    public boolean getIsElected() {
+        return this.isElected;
+    }
 }

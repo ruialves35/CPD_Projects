@@ -102,7 +102,7 @@ public class Store implements Server{
                 throw new RuntimeException(e);
             }
 
-            executorService = Executors.newFixedThreadPool(10);    // TODO: Check number of threads
+            executorService = Executors.newCachedThreadPool();    // TODO: Cached or fixed?
             executorService.submit(new TCPListener(storageService, membershipService, transferService, executorService, serverSocket));
 
 

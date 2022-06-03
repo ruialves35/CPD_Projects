@@ -46,7 +46,10 @@ public class ElectionService implements Runnable{
                         out.write(fileData);
 
                         Message electionMessage = new Message(MessageTypes.REQUEST.getCode(), MessageTypes.ELECTION_REQUEST.getCode(), out.toByteArray());
-                        Sender.sendTCPMessage(electionMessage.toBytes(), nextNode.getId(), nextNode.getPort());
+                        byte[] electionRes = Sender.sendTCPMessage(electionMessage.toBytes(), nextNode.getId(), nextNode.getPort());
+
+                        Message resMessage = new Message(electionRes);
+                        System.out.println("resMessage Action: " + resMessage.getAction());
                 } catch (IOException e) {
                         throw new RuntimeException(e);
                 }

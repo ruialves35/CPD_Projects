@@ -13,5 +13,6 @@ public class Constants {
     public static final long tombstoneCheckIntervalMS = 200;
     public static final long tombstoneExpirationMS = 10000;
     public static final int electionPingTime = 1000;
+    public static final long electionPingTimeout = 5000;
     public static final int invalidPort = -1;
 }
