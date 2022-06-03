@@ -91,6 +91,9 @@ public class Store implements Server{
 
     @Override
     public void join() throws RemoteException {
+        executorService = Executors.newCachedThreadPool();
+        this.storageService.setExecutorService(executorService);
+
         executorService.submit(() -> {
             // Checking serverSocket == null since when membershipCounter=0 it can be a member or not
             if ( (MembershipService.isClusterMember(this.membershipService.getMembershipCounter()) &&
@@ -147,7 +150,6 @@ public class Store implements Server{
                     multicastSocket.close();
                     multicastSocket = null;
 
-                    executorService.shutdownNow();
                     if (executorService.awaitTermination(1, TimeUnit.SECONDS)) {
                         System.out.println("Executor terminated.");
                     } else {
@@ -158,13 +160,11 @@ public class Store implements Server{
                 }
                 transferService.leave();
                 membershipService.leave();
-
-                executorService = Executors.newCachedThreadPool();
-                this.storageService.setExecutorService(executorService);
             } catch (RuntimeException re) {
                 System.err.println(re.getMessage());
                 // Clear ExecutorService threads?
             }
+            executorService.shutdownNow();
         });
     }
 
