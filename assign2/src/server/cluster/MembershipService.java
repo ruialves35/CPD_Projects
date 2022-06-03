@@ -488,17 +488,13 @@ public class MembershipService implements ClusterMembership {
     }
 
     public void handleElectionPing(Message message) {
-        System.out.println("Received election ping.");
-
         ByteArrayInputStream is = new ByteArrayInputStream(message.getBody());
         BufferedReader br = new BufferedReader(new InputStreamReader(is));
 
-        String line, newNodeId;
+        String line;
         final HashMap<String, ArrayList<Integer>> newMembershipLogs = new HashMap<>();
         final HashMap<String, Integer> newParsedLogs = new HashMap<>();
         try {
-            newNodeId = br.readLine();
-
             while ((line = br.readLine()) != null) {
                 if (line.isEmpty())
                     break;

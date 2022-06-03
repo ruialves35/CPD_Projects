@@ -46,7 +46,7 @@ public class Store implements Server{
         this.storePort = storePort;
 
         this.membershipService = new MembershipService(multicastIPAddr, multicastIPPort, nodeId, storePort);
-        this.storageService = new StorageService(membershipService.getNodeMap(), nodeId, executorService);
+        this.storageService = new StorageService(membershipService.getNodeMap(), nodeId);
         this.transferService = new TransferService(storageService, new Node(nodeId, storePort));
 
         // CHECK IF CRASHED (IF membershipCounter is EVEN - i.e part of the Cluster)
@@ -103,6 +103,7 @@ public class Store implements Server{
             }
 
             executorService = Executors.newCachedThreadPool();    // TODO: Cached or fixed?
+            this.storageService.setExecutorService(executorService);
             executorService.submit(new TCPListener(storageService, membershipService, transferService, executorService, serverSocket));
 
 
