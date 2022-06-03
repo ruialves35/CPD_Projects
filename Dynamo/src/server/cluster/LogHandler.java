@@ -44,8 +44,8 @@ public class LogHandler {
         int score = compareLogs(newLogs, folderPath);
 
         if (score == 0) {
-            // Node with lowerId will be elected
-            return newNodeId.compareTo(nodeId) < 0;
+            // Node with the lower hash id will be elected
+            return Utils.generateKey(newNodeId).compareTo(Utils.generateKey(nodeId)) < 0;
         }
 
         return score > 0;

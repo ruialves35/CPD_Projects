@@ -73,7 +73,10 @@ public class MembershipService implements ClusterMembership {
             this.multicastLeave();
 
             if (this.isElected) {
-                ElectionService.sendLeave(this.nodeId, this.getNextNode(Utils.generateKey(this.nodeId)), this.buildMembershipMsgBody());
+                if (this.nodeMap.size() > 0) {
+                    Node leaderHeir = this.nodeMap.firstEntry().getValue();
+                    ElectionService.sendLeave(this.nodeId, leaderHeir, this.buildMembershipMsgBody());
+                }
                 this.isElected = false;
                 if (this.electionPingThread != null) this.electionPingThread.cancel(true);
             }
@@ -346,7 +349,6 @@ public class MembershipService implements ClusterMembership {
     }
 
     public void handleJoinRequest(String nodeId, int tcpPort, int membershipCounter) {
-        System.out.println("Received join request with membershipCounter: " + membershipCounter);
         if (this.repliedNodes.contains(Utils.generateKey(nodeId))) {
             System.out.println("Received join from node that was already replied.");
             return;
@@ -526,7 +528,6 @@ public class MembershipService implements ClusterMembership {
             throw new RuntimeException(e);
         }
 
-        System.out.printf("Received %d logs\n", newParsedLogs.size());
         // Update current node logs
         final HashMap<String, Integer> currMembershipLogs = LogHandler.buildLogsMap(this.folderPath, Integer.MAX_VALUE);
         for (String iterNodeId : newMembershipLogs.keySet()) {
