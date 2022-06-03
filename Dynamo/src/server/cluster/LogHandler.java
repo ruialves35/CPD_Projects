@@ -19,11 +19,10 @@ public class LogHandler {
     public static boolean isMoreRecent(HashMap<String, Integer> newLogs, String newNodeId, String folderPath, String nodeId, boolean isPing) {
         int score = 0;
 
-        HashMap<String, Integer> currLogs = buildLogsMap(folderPath);
+        HashMap<String, Integer> currLogs = buildLogsMap(folderPath, Constants.numLogEvents);
 
         Set<String> logs = new HashSet<>(currLogs.keySet());
         logs.addAll(newLogs.keySet().stream().toList());
-
         for (final String currNodeId : logs) {
             int currCounter = -1;
             int newCounter = -1;
@@ -47,7 +46,7 @@ public class LogHandler {
         return score > 0;
     }
 
-    public static HashMap<String, Integer> buildLogsMap(String folderPath) {
+    public static HashMap<String, Integer> buildLogsMap(String folderPath, int maxLogs) {
         File file = new File(folderPath + Constants.membershipLogFileName);
         HashMap<String, Integer> nodesMap = new HashMap<>();
 
@@ -55,10 +54,13 @@ public class LogHandler {
             FileReader fr = new FileReader(file);
             BufferedReader br = new BufferedReader(fr);
             String line;
-
+            int logCounter = 0;
             while ((line = br.readLine()) != null) {
+                if (logCounter >= maxLogs) break;
+
                 String[] lineData = line.split(" ");
                 nodesMap.put(lineData[0], Integer.parseInt(lineData[1]));
+                logCounter++;
             }
         } catch (IOException e) {
             return nodesMap;

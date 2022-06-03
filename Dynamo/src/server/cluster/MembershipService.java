@@ -528,7 +528,7 @@ public class MembershipService implements ClusterMembership {
 
 
         // Update current node logs
-        final HashMap<String, Integer> currMembershipLogs = LogHandler.buildLogsMap(this.folderPath);
+        final HashMap<String, Integer> currMembershipLogs = LogHandler.buildLogsMap(this.folderPath, Integer.MAX_VALUE);
         for (String iterNodeId : newMembershipLogs.keySet()) {
             int currCounter = -1;
             if (currMembershipLogs.containsKey(iterNodeId))
@@ -586,7 +586,7 @@ public class MembershipService implements ClusterMembership {
      * @param newMembershipLogs
      */
     private void updateMembershipInfo(ArrayList<String> newMembershipLogs) {
-        HashMap<String, Integer> currMembershipLogs = LogHandler.buildLogsMap(this.folderPath);
+        HashMap<String, Integer> currMembershipLogs = LogHandler.buildLogsMap(this.folderPath, Integer.MAX_VALUE);
 
         for (String newLog : newMembershipLogs) {
             String[] logData = newLog.split(" ");
