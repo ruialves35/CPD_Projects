@@ -461,7 +461,6 @@ public class MembershipService implements ClusterMembership {
     }
 
     public void handleElectionRequest(Message message, ExecutorService executorService) {
-        System.out.println("Received election request.");
 
         InputStream is = new ByteArrayInputStream(message.getBody());
         BufferedReader br = new BufferedReader(new InputStreamReader(is));
@@ -480,6 +479,7 @@ public class MembershipService implements ClusterMembership {
                 return;
             }
 
+            System.out.printf("Received election request from %s\n", newNodeId);
             while ((line = br.readLine()) != null) {
                 String[] logData = line.split(" ");
                 membershipLogs.put(logData[0], Integer.parseInt(logData[1]));
@@ -488,7 +488,7 @@ public class MembershipService implements ClusterMembership {
             throw new RuntimeException(e);
         }
 
-        if (LogHandler.isMoreRecent(membershipLogs, newNodeId, this.folderPath, this.nodeId, false)) {
+        if (LogHandler.shouldPropagate(membershipLogs, newNodeId, this.folderPath, this.nodeId)) {
             // Propagate the message to the next node?
             System.out.println("Log is more recent! propagate to next node");
 
@@ -526,7 +526,7 @@ public class MembershipService implements ClusterMembership {
             throw new RuntimeException(e);
         }
 
-
+        System.out.printf("Received %d logs\n", newParsedLogs.size());
         // Update current node logs
         final HashMap<String, Integer> currMembershipLogs = LogHandler.buildLogsMap(this.folderPath, Integer.MAX_VALUE);
         for (String iterNodeId : newMembershipLogs.keySet()) {
@@ -540,7 +540,7 @@ public class MembershipService implements ClusterMembership {
             }
         }
 
-        if (LogHandler.isMoreRecent(newParsedLogs, newNodeId, this.folderPath, this.nodeId, true)) {
+        if (LogHandler.shouldBeElected(newParsedLogs, this.folderPath)) {
             // Propagate the message to the next node?
             System.out.println("Node is more recent than the current leader. Starting an election request...");
 

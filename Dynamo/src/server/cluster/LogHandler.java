@@ -11,18 +11,17 @@ public class LogHandler {
     /**
      * Compare this node logs with the logs from a new node relative to their recency.
      * @param newLogs
-     * @param newNodeId
      * @param folderPath
-     * @param nodeId
-     * @return
+     * @return comparison result. If > 0 newLogs are more recent.
      */
-    public static boolean isMoreRecent(HashMap<String, Integer> newLogs, String newNodeId, String folderPath, String nodeId, boolean isPing) {
+    public static int compareLogs(HashMap<String, Integer> newLogs, String folderPath) {
         int score = 0;
 
         HashMap<String, Integer> currLogs = buildLogsMap(folderPath, Constants.numLogEvents);
 
         Set<String> logs = new HashSet<>(currLogs.keySet());
-        logs.addAll(newLogs.keySet().stream().toList());
+        logs.addAll(newLogs.keySet());
+
         for (final String currNodeId : logs) {
             int currCounter = -1;
             int newCounter = -1;
@@ -38,12 +37,24 @@ public class LogHandler {
                 score -= 1;
         }
 
+        return score;
+    }
+
+    public static boolean shouldPropagate(HashMap<String, Integer> newLogs, String newNodeId, String folderPath, String nodeId) {
+        int score = compareLogs(newLogs, folderPath);
+
         if (score == 0) {
-            // If it is an election ping, do not change leader on tie. Otherwise, update the leader.
-            return !isPing; // (!isPing) && newNodeId.compareTo(nodeId) < 0;
+            // Node with lowerId will be elected
+            return newNodeId.compareTo(nodeId) < 0;
         }
 
         return score > 0;
+    }
+
+    public static boolean shouldBeElected(HashMap<String, Integer> newLogs, String folderPath) {
+        int score = compareLogs(newLogs, folderPath);
+
+        return score < 0;
     }
 
     public static HashMap<String, Integer> buildLogsMap(String folderPath, int maxLogs) {
