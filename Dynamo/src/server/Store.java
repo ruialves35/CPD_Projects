@@ -170,7 +170,8 @@ public class Store implements Server{
             this.membershipService.leave();
             this.join();
 
-            // TODO: Call method to recover backup files
+            // recover backup files
+            this.transferService.recoverFromCrash();
         }
     }
 }

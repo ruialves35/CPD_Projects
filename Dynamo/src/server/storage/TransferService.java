@@ -82,7 +82,7 @@ public class TransferService {
     /**
      * Recovers from a crash by updating the node's files and deleting invalid ones
      */
-    private void recoverFromCrash() {
+    public void recoverFromCrash() {
         if (storageService.getNumberOfNodes() == 1) return;
 
         // Copy own files
