@@ -34,7 +34,7 @@ public class ElectionService implements Runnable{
         public static void sendRequest(String nodeId, Node nextNode) {
                 if (nextNode == null) return;
 
-                System.out.printf("Sending Election Request to %s:%d...\n", nextNode.getId(), nextNode.getPort());
+                System.out.printf("Sending Election Request to %s...\n", nextNode.getId());
                 Path path = Paths.get(Utils.generateFolderPath(nodeId) + Utils.membershipLogFileName);
 
                 try {

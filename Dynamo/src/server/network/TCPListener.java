@@ -85,6 +85,10 @@ public class TCPListener implements Runnable {
                 this.membershipService.handleElectionRequest(message, this.executorService);
                 reply = new Message(MessageTypes.REPLY.getCode(), MessageTypes.OK.getCode(), "".getBytes(StandardCharsets.UTF_8));
             }
+            case "electionLeave" -> {
+                this.membershipService.handleElectionLeave(message);
+                reply = new Message(MessageTypes.REPLY.getCode(), MessageTypes.OK.getCode(), "".getBytes(StandardCharsets.UTF_8));
+            }
             case "join" -> {
                 this.membershipService.handleMembershipResponse(message);
 

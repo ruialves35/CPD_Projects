@@ -551,4 +551,42 @@ public class MembershipService implements ClusterMembership {
             ElectionService.sendRequest(this.nodeId, this.getNextNode(Utils.generateKey(this.nodeId)));
         }
     }
+    public void handleElectionLeave(Message message) {
+        System.out.println("Received election leave.");
+
+        InputStream is = new ByteArrayInputStream(message.getBody());
+        BufferedReader br = new BufferedReader(new InputStreamReader(is));
+
+        String line;
+        final ArrayList<String> newMembershipLogs = new ArrayList<>();
+        try {
+            br.readLine();
+
+            while ((line = br.readLine()) != null) {
+                if (line.isEmpty())
+                    break; // Reached the end of membership log
+                newMembershipLogs.add(line);
+            }
+
+            while ((line = br.readLine()) != null) {
+                String[] data = line.split(" ");
+                String newNodeId = data[0];
+                int newNodePort = Integer.parseInt(data[1]);
+                this.addNodeToMap(newNodeId, newNodePort); // Check what happens when adding node that already exists
+            }
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+
+        for (String newLog : newMembershipLogs) {
+            String[] logData = newLog.split(" ");
+            String logId = logData[0];
+            int logCounter = Integer.parseInt(logData[1]);
+            this.addLog(logId, logCounter, Utils.invalidPort);  // nodePort will not be used
+        }
+
+        // Send election request to become the new leader
+        ElectionService.sendRequest(this.nodeId, this.getNextNode(Utils.generateKey(this.nodeId)));
+    }
+
 }
