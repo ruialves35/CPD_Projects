@@ -47,7 +47,7 @@ public class ElectionService implements Runnable{
 
                         sendSafeMessage(nodeId, nodeMap, electionMessage, "Request");
                 } catch (IOException e) {
-                        throw new RuntimeException(e);
+                        System.out.println("Error while starting election request");
                 }
         }
 
@@ -55,7 +55,7 @@ public class ElectionService implements Runnable{
                 try {
                         sendSafeMessage(nodeId, nodeMap, message, "Propagate");
                 } catch (IOException e) {
-                        throw new RuntimeException(e);
+                        System.out.println("Error while propagating election request");
                 }
         }
 
@@ -67,7 +67,7 @@ public class ElectionService implements Runnable{
                         Message electionMessage = new Message(MessageTypes.REQUEST.getCode(), MessageTypes.ELECTION_LEAVE.getCode(), leaveBody);
                         sendSafeByFirst(nodeMap, electionMessage, "Leave");
                 } catch (IOException e) {
-                        throw new RuntimeException(e);
+                        System.out.println("Error while sending leave request");
                 }
         }
 

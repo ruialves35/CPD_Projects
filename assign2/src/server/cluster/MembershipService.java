@@ -96,7 +96,7 @@ public class MembershipService implements ClusterMembership {
                 counterWriter.write(String.valueOf(newCounter));
                 counterWriter.close();
             } catch (IOException e) {
-                throw new RuntimeException(e);
+                System.out.println("Failed to update membership counter.");
             }
         }
     }
@@ -106,7 +106,12 @@ public class MembershipService implements ClusterMembership {
     }
 
     private void multicastJoin() {
-        byte[] joinBody = buildMembershipBody();
+        byte[] joinBody;
+        try {
+            joinBody = buildMembershipBody();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
         Message msg = new Message("REQ", "join", joinBody);
 
         // Add this node information
@@ -139,7 +144,12 @@ public class MembershipService implements ClusterMembership {
     }
 
     private void multicastLeave() {
-        byte[] leaveBody = buildMembershipBody();
+        byte[] leaveBody;
+        try {
+            leaveBody = buildMembershipBody();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
         Message msg = new Message("REQ", "leave", leaveBody);
 
         try {
@@ -154,17 +164,13 @@ public class MembershipService implements ClusterMembership {
     /**
      * Body has nodeId, tcp port and membership Counter
      */
-    private byte[] buildMembershipBody() {
+    private byte[] buildMembershipBody() throws IOException {
         StringBuilder sb = new StringBuilder();
         sb.append(this.nodeId).append(Utils.newLine);
         sb.append(this.tcpPort).append(Utils.newLine);
         sb.append(this.membershipCounter).append(Utils.newLine);
         ByteArrayOutputStream out = new ByteArrayOutputStream();
-        try {
-            out.write(sb.toString().getBytes(StandardCharsets.UTF_8));
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
+        out.write(sb.toString().getBytes(StandardCharsets.UTF_8));
         return out.toByteArray();
     }
 
@@ -356,7 +362,6 @@ public class MembershipService implements ClusterMembership {
         this.addNodeToMap(nodeId, tcpPort);
         this.addLog(nodeId, membershipCounter, tcpPort);
 
-        // Updated membership info TODO: CHECK IF THIS IS OK
         this.repliedNodes.clear();
         this.repliedNodes.add(Utils.generateKey(nodeId));
 
@@ -379,7 +384,6 @@ public class MembershipService implements ClusterMembership {
         this.removeNodeFromMap(nodeId);
         this.addLog(nodeId, membershipCounter, tcpPort);
 
-        // Updated membership info TODO: CHECK IF THIS IS OK
         this.repliedNodes.clear();
     }
 
@@ -410,7 +414,9 @@ public class MembershipService implements ClusterMembership {
                 this.addNodeToMap(newNodeId, newNodePort); // Check what happens when adding node that already exists
             }
         } catch (IOException e) {
-            throw new RuntimeException(e);
+            System.out.println("Error while handling membership response:");
+            e.printStackTrace();
+            return;
         }
 
         updateMembershipInfo(membershipLogs);
@@ -551,7 +557,9 @@ public class MembershipService implements ClusterMembership {
                 this.addNodeToMap(newNodeId, newNodePort); // Check what happens when adding node that already exists
             }
         } catch (IOException e) {
-            throw new RuntimeException(e);
+            System.out.println("Error while handling election leave:");
+            e.printStackTrace();
+            return;
         }
 
         updateMembershipInfo(newMembershipLogs);

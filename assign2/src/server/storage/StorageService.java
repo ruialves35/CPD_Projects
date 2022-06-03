@@ -92,7 +92,7 @@ public class StorageService implements KeyValue {
             try (FileInputStream fis = new FileInputStream(filePath)) {
                 value = fis.readAllBytes();
             } catch (IOException e) {
-                String error = "Error opening file in get operation: " + filePath;
+                String error = "Error opening file in get operation: " + key;
                 System.out.println(error);
                 return new Message("REP", "error", error.getBytes(StandardCharsets.UTF_8));
             }

@@ -48,7 +48,6 @@ public class TestClient {
             try {
                 keyValueOperation(nodeIP, Integer.parseInt(nodeSuffix), operation, operand);
             } catch (IOException e) {
-                // TODO Handle specific errors
                 System.out.println("Client sided error:");
                 throw new RuntimeException(e);
             }
