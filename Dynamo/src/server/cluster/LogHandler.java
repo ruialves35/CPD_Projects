@@ -58,23 +58,27 @@ public class LogHandler {
     }
 
     public static HashMap<String, Integer> buildLogsMap(String folderPath, int maxLogs) {
-        File file = new File(folderPath + Constants.membershipLogFileName);
+        String logPath = folderPath + Constants.membershipLogFileName;
+
         HashMap<String, Integer> nodesMap = new HashMap<>();
+        synchronized (logPath.intern()) {
+            File file = new File(logPath);
 
-        try {
-            FileReader fr = new FileReader(file);
-            BufferedReader br = new BufferedReader(fr);
-            String line;
-            int logCounter = 0;
-            while ((line = br.readLine()) != null) {
-                if (logCounter >= maxLogs) break;
+            try {
+                FileReader fr = new FileReader(file);
+                BufferedReader br = new BufferedReader(fr);
+                String line;
+                int logCounter = 0;
+                while ((line = br.readLine()) != null) {
+                    if (logCounter >= maxLogs) break;
 
-                String[] lineData = line.split(" ");
-                nodesMap.put(lineData[0], Integer.parseInt(lineData[1]));
-                logCounter++;
+                    String[] lineData = line.split(" ");
+                    nodesMap.put(lineData[0], Integer.parseInt(lineData[1]));
+                    logCounter++;
+                }
+            } catch (IOException e) {
+                return nodesMap;
             }
-        } catch (IOException e) {
-            return nodesMap;
         }
 
         return nodesMap;
