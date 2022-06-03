@@ -436,7 +436,7 @@ public class MembershipService implements ClusterMembership {
         if (this.membershipCounter != 0) return true;
 
         try {
-            Path path = Paths.get(this.folderPath + Utils.membershipLogFileName);
+            Path path = Paths.get(this.folderPath + Constants.membershipLogFileName);
             return Files.lines(path).count() > 1;
         } catch (IOException e) {
             throw new RuntimeException(e);

@@ -3,9 +3,7 @@ package client;
 import common.Message;
 import common.Sender;
 import common.Utils;
-import example.Hello;
 import server.Server;
-
 import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;

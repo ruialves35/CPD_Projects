@@ -47,7 +47,7 @@ public class Store implements Server{
 
         this.membershipService = new MembershipService(multicastIPAddr, multicastIPPort, nodeId, storePort);
         this.storageService = new StorageService(membershipService.getNodeMap(), nodeId, executorService);
-        this.transferService = new TransferService(membershipService.getNodeMap(), storageService, new Node(nodeId, storePort));
+        this.transferService = new TransferService(storageService, new Node(nodeId, storePort));
 
         // CHECK IF CRASHED (IF membershipCounter is EVEN - i.e part of the Cluster)
         this.checkNodeCrash();
