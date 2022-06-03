@@ -4,6 +4,7 @@ import common.Message;
 import common.MessageTypes;
 import common.Sender;
 import common.Utils;
+import server.Constants;
 
 import java.io.*;
 import java.nio.charset.StandardCharsets;
@@ -35,7 +36,7 @@ public class ElectionService implements Runnable{
                 if (nextNode == null) return;
 
                 System.out.printf("Sending Election Request to %s...\n", nextNode.getId());
-                Path path = Paths.get(Utils.generateFolderPath(nodeId) + Utils.membershipLogFileName);
+                Path path = Paths.get(Utils.generateFolderPath(nodeId) + Constants.membershipLogFileName);
 
                 try {
                         byte[] fileData = Files.readAllBytes(path);
@@ -99,7 +100,7 @@ public class ElectionService implements Runnable{
 
                                 Sender.sendMulticast(msg.toBytes(), this.multicastIPAddr, this.multicastPort);
 
-                                Thread.sleep(Utils.electionPingTime);
+                                Thread.sleep(Constants.electionPingTime);
                                 // TODO: Check if needs to detect any exception to stop
                         }
                 } catch (InterruptedException e) {
