@@ -411,12 +411,7 @@ public class MembershipService implements ClusterMembership {
             throw new RuntimeException(e);
         }
 
-        for (String newLog : membershipLogs) {
-            String[] logData = newLog.split(" ");
-            String logId = logData[0];
-            int logCounter = Integer.parseInt(logData[1]);
-            this.addLog(logId, logCounter, Constants.invalidPort);  // nodePort will not be used
-        }
+        updateMembershipInfo(membershipLogs);
 
         System.out.println("Received membership Logs: " + membershipLogs + "\nnodeMap: " + this.getNodeMap());
     }
@@ -578,15 +573,31 @@ public class MembershipService implements ClusterMembership {
             throw new RuntimeException(e);
         }
 
+        updateMembershipInfo(newMembershipLogs);
+
+        // Send election request to become the new leader
+        ElectionService.sendRequest(this.nodeId, this.getNextNode(Utils.generateKey(this.nodeId)));
+    }
+
+    /**
+     * This method updates this node membershipInfo efficiently, according to the new received logs
+     * @param newMembershipLogs
+     */
+    private void updateMembershipInfo(ArrayList<String> newMembershipLogs) {
+        HashMap<String, Integer> currMembershipLogs = LogHandler.buildLogsMap(this.folderPath);
+
         for (String newLog : newMembershipLogs) {
             String[] logData = newLog.split(" ");
             String logId = logData[0];
             int logCounter = Integer.parseInt(logData[1]);
-            this.addLog(logId, logCounter, Utils.invalidPort);  // nodePort will not be used
-        }
 
-        // Send election request to become the new leader
-        ElectionService.sendRequest(this.nodeId, this.getNextNode(Utils.generateKey(this.nodeId)));
+            int currCounter = -1;
+            if (currMembershipLogs.containsKey(logId))
+                currCounter = currMembershipLogs.get(logId);
+
+            if (logCounter > currCounter)
+                this.addLog(logId, logCounter, Constants.invalidPort);
+        }
     }
 
 }
