@@ -46,8 +46,11 @@ public class Store implements Server{
         this.nodeId = nodeId;
         this.storePort = storePort;
 
+        executorService = Executors.newCachedThreadPool();
+
         this.membershipService = new MembershipService(multicastIPAddr, multicastIPPort, nodeId, storePort);
         this.storageService = new StorageService(membershipService.getNodeMap(), nodeId);
+        this.storageService.setExecutorService(executorService);
         this.transferService = new TransferService(storageService, new Node(nodeId, storePort));
 
         // CHECK IF CRASHED (IF membershipCounter is EVEN - i.e part of the Cluster)
@@ -87,83 +90,84 @@ public class Store implements Server{
     }
 
     @Override
-    public boolean join() throws RemoteException {
-        // Checking serverSocket == null since when membershipCounter=0 it can be a member or not
-        if ( (MembershipService.isClusterMember(this.membershipService.getMembershipCounter()) &&
-                this.membershipService.getMembershipCounter() != 0)  || (serverSocket != null)) {
-            System.err.println("Attempting to join a cluster while being a member.");
-            return false;
-        }
+    public void join() throws RemoteException {
+        executorService = Executors.newCachedThreadPool();
+        this.storageService.setExecutorService(executorService);
 
-        try {
-            try {
-                InetAddress addr = InetAddress.getByName(nodeId);
-                serverSocket = new ServerSocket(storePort, 50, addr);
-            } catch (IOException e) {
-                throw new RuntimeException(e);
+        executorService.submit(() -> {
+            // Checking serverSocket == null since when membershipCounter=0 it can be a member or not
+            if ( (MembershipService.isClusterMember(this.membershipService.getMembershipCounter()) &&
+                    this.membershipService.getMembershipCounter() != 0)  || (serverSocket != null)) {
+                System.err.println("Attempting to join a cluster while being a member.");
+                return;
             }
 
-            executorService = Executors.newCachedThreadPool();    // TODO: Cached or fixed?
-            this.storageService.setExecutorService(executorService);
-            executorService.submit(new TCPListener(storageService, membershipService, transferService, executorService, serverSocket));
-
-
-            this.membershipService.join();
-            if (!this.hasCrashed)
-                this.transferService.join();
-
             try {
-                multicastSocket = new MulticastSocket(multicastIPPort);
-                executorService.submit(new UDPListener(storageService, membershipService, transferService, executorService, multicastSocket));
-                executorService.submit(new TombstoneManager(storageService.getDbFolder()));
-            } catch (IOException e) {
-                throw new RuntimeException(e);
+                try {
+                    InetAddress addr = InetAddress.getByName(nodeId);
+                    serverSocket = new ServerSocket(storePort, 50, addr);
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
+
+                executorService.submit(new TCPListener(storageService, membershipService, transferService, executorService, serverSocket));
+
+                this.membershipService.join();
+                if (!this.hasCrashed)
+                    this.transferService.join();
+                else
+                    this.transferService.recoverFromCrash();
+
+                try {
+                    multicastSocket = new MulticastSocket(multicastIPPort);
+                    executorService.submit(new UDPListener(storageService, membershipService, transferService, executorService, multicastSocket));
+                    executorService.submit(new TombstoneManager(storageService.getDbFolder()));
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
+            } catch(RuntimeException re) {
+                System.err.println(re.getMessage());
+                // Clear ExecutorService threads?
             }
-        } catch(RuntimeException re) {
-            System.err.println(re.getMessage());
-            // Clear ExecutorService threads?
-        }
-
-
-        return true;
+        });
     }
 
     @Override
-    public boolean leave() throws RemoteException {
-        // Checking serverSocket == null since when membershipCounter=0 it can be a member or not
-        if (!MembershipService.isClusterMember(this.membershipService.getMembershipCounter()) || (serverSocket == null)) {
-            System.err.println("Attempting to leave the cluster while not being a member.");
-            return false;
-        }
-
-        try {
-            try {
-                serverSocket.close();
-                serverSocket = null;
-
-                InetSocketAddress group = new InetSocketAddress(multicastIPAddr, multicastIPPort);
-                NetworkInterface netInf = NetworkInterface.getByIndex(0);
-                multicastSocket.leaveGroup(group, netInf);
-                multicastSocket.close();
-                multicastSocket = null;
-
-                executorService.shutdownNow();
-                if (executorService.awaitTermination(1, TimeUnit.SECONDS)) {
-                    System.out.println("Executor terminated.");
-                } else {
-                    System.out.println("Executor still running");
-                }
-            } catch (InterruptedException | IOException e) {
-                throw new RuntimeException(e);
+    public void leave() throws RemoteException {
+        executorService.submit(() -> {
+            // Checking serverSocket == null since when membershipCounter=0 it can be a member or not
+            if (!MembershipService.isClusterMember(this.membershipService.getMembershipCounter()) || (serverSocket == null)) {
+                System.err.println("Attempting to leave the cluster while not being a member.");
+                return;
             }
-            transferService.leave();
-            membershipService.leave();
-        } catch (RuntimeException re) {
-            System.err.println(re.getMessage());
-            // Clear ExecutorService threads?
-        }
 
-        return true;
+            try {
+                try {
+                    serverSocket.close();
+                    serverSocket = null;
+
+                    InetSocketAddress group = new InetSocketAddress(multicastIPAddr, multicastIPPort);
+                    NetworkInterface netInf = NetworkInterface.getByIndex(0);
+                    multicastSocket.leaveGroup(group, netInf);
+                    multicastSocket.close();
+                    multicastSocket = null;
+
+                    if (executorService.awaitTermination(1, TimeUnit.SECONDS)) {
+                        System.out.println("Executor terminated.");
+                    } else {
+                        System.out.println("Executor still running");
+                    }
+                } catch (InterruptedException | IOException e) {
+                    throw new RuntimeException(e);
+                }
+                transferService.leave();
+                membershipService.leave();
+            } catch (RuntimeException re) {
+                System.err.println(re.getMessage());
+                // Clear ExecutorService threads?
+            }
+            executorService.shutdownNow();
+        });
     }
 
     private void checkNodeCrash() throws RemoteException {
@@ -174,8 +178,6 @@ public class Store implements Server{
             this.membershipService.leave();
             this.join();
 
-            // recover backup files
-            this.transferService.recoverFromCrash();
             this.hasCrashed = false;
         }
     }

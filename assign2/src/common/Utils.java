@@ -19,9 +19,8 @@ public class Utils {
             return String.format("%x", new BigInteger(1, hashBytes));
         } catch (NoSuchAlgorithmException e) {
             System.out.println("Invalid MessageDigest algorithm");
-            System.exit(1);
+            throw new RuntimeException(e);
         }
-        return null;
     }
 
     public static String generateFolderPath(String nodeId) {

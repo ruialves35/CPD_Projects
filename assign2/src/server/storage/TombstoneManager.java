@@ -19,9 +19,7 @@ public class TombstoneManager implements Runnable {
         while (true) {
             try {
                 Thread.sleep(Constants.tombstoneCheckIntervalMS);
-            } catch (InterruptedException e) {
-                System.out.println("Error sleeping tombstone manager");
-                e.printStackTrace();
+            } catch (InterruptedException ignored) {
             }
 
             File[] tombstones = tombstoneFolder.listFiles();
@@ -52,7 +50,6 @@ public class TombstoneManager implements Runnable {
                     }
                 } catch (IOException e) {
                     System.out.println("Error opening tombstone file in manager: " + file.getName());
-                    throw new RuntimeException(e);
                 }
             }
         }

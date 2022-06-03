@@ -43,8 +43,9 @@ public class StorageService implements KeyValue {
             try (FileOutputStream fos = new FileOutputStream(filePath)) {
                 fos.write(value);
             } catch (IOException e) {
-                System.out.println("Error opening file in put operation: " + filePath);
-                return new Message("REP", "error", null);
+                String error = "Error opening file in put operation: " + filePath;
+                System.out.println(error);
+                return new Message("REP", "error", error.getBytes(StandardCharsets.UTF_8));
             }
         }
 
@@ -91,8 +92,9 @@ public class StorageService implements KeyValue {
             try (FileInputStream fis = new FileInputStream(filePath)) {
                 value = fis.readAllBytes();
             } catch (IOException e) {
-                System.out.println("Error opening file in get operation: " + filePath);
-                return new Message("REP", "error", null);
+                String error = "Error opening file in get operation: " + key;
+                System.out.println(error);
+                return new Message("REP", "error", error.getBytes(StandardCharsets.UTF_8));
             }
         }
 
@@ -133,8 +135,9 @@ public class StorageService implements KeyValue {
             try (FileInputStream fis = new FileInputStream(filePath)) {
                 value = fis.readAllBytes();
             } catch (IOException e) {
-                System.out.println("Error opening file in get operation: " + key);
-                return new Message("REP", "error", null);
+                String error = "Error opening file in get operation: " + key;
+                System.out.println(error);
+                return new Message("REP", "error", error.getBytes(StandardCharsets.UTF_8));
             }
         }
 
@@ -164,8 +167,9 @@ public class StorageService implements KeyValue {
 
             return new Message("REP", "ok", null);
         } catch (IOException e) {
-            System.out.println("Error in saveFile operation: " + key);
-            return new Message("REP", "error", null);
+            String error = "Error opening file in put operation: " + filePath;
+            System.out.println(error);
+            return new Message("REP", "error", error.getBytes(StandardCharsets.UTF_8));
         }
     }
 
@@ -174,8 +178,9 @@ public class StorageService implements KeyValue {
             saveTombstone(key, System.currentTimeMillis());
             return new Message("REP", "ok", null);
         } catch (IOException e) {
-            System.out.println("Error creating tombstone file: " + key);
-            return new Message("REP", "error", null);
+            String error = "Error creating tombstone file: " + key;
+            System.out.println(error);
+            return new Message("REP", "error", error.getBytes(StandardCharsets.UTF_8));
         }
     }
 
@@ -286,7 +291,6 @@ public class StorageService implements KeyValue {
         if (!folder.exists()) {
             if (!folder.mkdir()) {
                 System.out.println("Error creating tombstone folder");
-                throw new RuntimeException("Error creating tombstone folder");
             }
         }
     }
@@ -303,8 +307,9 @@ public class StorageService implements KeyValue {
                 dos.write(value);
                 return new Message("REP", "ok", bos.toByteArray());
             } catch (IOException e) {
-                System.out.println("Error opening tombstone in getAndDelete operation: " + key);
-                return new Message("REP", "error", null);
+                String error = "Error opening tombstone file operation: " + key;
+                System.out.println(error);
+                return new Message("REP", "error", error.getBytes(StandardCharsets.UTF_8));
             }
         }
     }

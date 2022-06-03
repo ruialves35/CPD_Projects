@@ -13,6 +13,7 @@ import java.rmi.NotBoundException;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
+import java.util.Scanner;
 
 public class TestClient {
     public static void main(String[] args) {
@@ -47,9 +48,8 @@ public class TestClient {
             try {
                 keyValueOperation(nodeIP, Integer.parseInt(nodeSuffix), operation, operand);
             } catch (IOException e) {
-                // TODO Handle specific errors
                 System.out.println("Client sided error:");
-                e.printStackTrace();
+                throw new RuntimeException(e);
             }
         }
     }
@@ -67,12 +67,15 @@ public class TestClient {
                 nodeIP = reader.readLine();
                 nodePort = Integer.parseInt(reader.readLine());
                 System.out.println("Redirecting to " + nodeIP + ":" + nodePort);
+            } else if (reply.getAction().equals("error")) {
+                System.out.println("Received error message: " + new String(reply.getBody()));
+                return;
             } else {
                 System.out.println("Received " + reply.getAction() + " reply");
             }
         } while (reply.getAction().equals("redirect"));
 
-        if (operation.equals("get") && !reply.getAction().equals("error")) {
+        if (operation.equals("get")) {
             ByteArrayInputStream bis = new ByteArrayInputStream(reply.getBody());
             //noinspection ResultOfMethodCallIgnored
             bis.skip(8); // Ignore tombstone
@@ -105,8 +108,11 @@ public class TestClient {
     }
 
     private static void saveFile(byte[] value) throws IOException {
-        // TODO Where should we save the file?
-        try (FileOutputStream fos = new FileOutputStream("file")) {
+        Scanner scanner = new Scanner(System.in);
+        System.out.print("Insert the name of the file to be saved: ");
+        String fileName = scanner.nextLine();
+
+        try (FileOutputStream fos = new FileOutputStream(fileName)) {
             fos.write(value);
         }
     }
