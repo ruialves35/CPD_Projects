@@ -1,16 +1,19 @@
 package server.network;
 
 import common.Message;
+import common.MessageTypes;
+import common.Utils;
 import server.cluster.MembershipService;
 import server.storage.StorageService;
 import server.storage.TransferService;
-
 import java.io.*;
 import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.net.SocketException;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.ArrayList;
 import java.util.concurrent.ExecutorService;
 
 public class TCPListener implements Runnable {
@@ -18,28 +21,24 @@ public class TCPListener implements Runnable {
     private final MembershipService membershipService;
     private final TransferService transferService;
     private final ExecutorService executorService;
-    private final String nodeIp;
-    private final int port;
 
-    public TCPListener(StorageService storageService, MembershipService membershipService,
-            TransferService transferService,
-            ExecutorService executorService, String nodeIp, int port) {
+    private final ServerSocket serverSocket;
+
+    public TCPListener(StorageService storageService, MembershipService membershipService, TransferService transferService,
+                       ExecutorService executorService, ServerSocket serverSocket) {
         this.storageService = storageService;
         this.membershipService = membershipService;
         this.transferService = transferService;
         this.executorService = executorService;
-        this.nodeIp = nodeIp;
-        this.port = port;
+        this.serverSocket = serverSocket;
     }
 
     public void run() {
         try {
-            InetAddress addr = InetAddress.getByName(nodeIp);
-            ServerSocket serverSocket = new ServerSocket(this.port, 50, addr);
             System.out.println("Listening for TCP Messages in address " + serverSocket.getInetAddress() +
                     " port " + serverSocket.getLocalPort());
             while (true) {
-                Socket socket = serverSocket.accept();
+                Socket socket = this.serverSocket.accept();
                 DataInputStream istream = new DataInputStream(socket.getInputStream());
                 DataOutputStream ostream = new DataOutputStream(socket.getOutputStream());
 
@@ -52,7 +51,7 @@ public class TCPListener implements Runnable {
                     } catch (IOException e) {
                         System.out.println("Error processing event");
                         // TODO Handle specific errors
-                        Message errorMsg = new Message("REP", "error", null);
+                        Message errorMsg = new Message(MessageTypes.REPLY.getCode(), "error", null);
                         try {
                             ostream.write(errorMsg.toBytes());
                             istream.close();
@@ -63,10 +62,12 @@ public class TCPListener implements Runnable {
                     }
                 });
 
-                if (message.getAction().equals("leave"))
+                if (message.getAction().equals("exit"))
                     break;
             }
             serverSocket.close();
+        } catch (SocketException se) {
+            System.out.println("[TCPListener] Detected SocketException.");
         } catch (IOException e) {
             System.out.println("Error opening TCP server");
             throw new RuntimeException(e);
@@ -80,10 +81,18 @@ public class TCPListener implements Runnable {
 
         Message reply;
         switch (message.getAction()) {
+            case "electionRequest" -> {
+                this.membershipService.handleElectionRequest(message, this.executorService);
+                reply = new Message(MessageTypes.REPLY.getCode(), MessageTypes.OK.getCode(), "".getBytes(StandardCharsets.UTF_8));
+            }
+            case "electionLeave" -> {
+                this.membershipService.handleElectionLeave(message);
+                reply = new Message(MessageTypes.REPLY.getCode(), MessageTypes.OK.getCode(), "".getBytes(StandardCharsets.UTF_8));
+            }
             case "join" -> {
                 this.membershipService.handleMembershipResponse(message);
 
-                reply = new Message("REP", "ok", "".getBytes(StandardCharsets.UTF_8));
+                reply = new Message(MessageTypes.REPLY.getCode(), MessageTypes.OK.getCode(), "".getBytes(StandardCharsets.UTF_8));
             }
             case "get" -> reply = storageService.get(new String(message.getBody()));
             case "put" -> {
@@ -110,7 +119,7 @@ public class TCPListener implements Runnable {
                     }
                 }
 
-                reply = new Message("REP", "ok", sb.toString().getBytes(StandardCharsets.UTF_8));
+                reply = new Message(MessageTypes.REPLY.getCode(), MessageTypes.OK.getCode(), sb.toString().getBytes(StandardCharsets.UTF_8));
             }
             case "delete" -> reply = storageService.delete(new String(message.getBody()));
             case "safeDelete" -> reply = storageService.safeDelete(new String(message.getBody()));

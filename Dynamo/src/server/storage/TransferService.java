@@ -3,6 +3,8 @@ package server.storage;
 import common.Message;
 import common.Sender;
 import server.Constants;
+import common.Utils;
+import server.cluster.MembershipService;
 import server.cluster.Node;
 
 import java.io.*;
@@ -80,7 +82,7 @@ public class TransferService {
     /**
      * Recovers from a crash by updating the node's files and deleting invalid ones
      */
-    private void recoverFromCrash() {
+    public void recoverFromCrash() {
         if (storageService.getNumberOfNodes() == 1) return;
 
         // Copy own files
